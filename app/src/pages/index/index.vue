@@ -2,7 +2,11 @@
     <view class="nav"></view>
     <CustomNavBar title=""></CustomNavBar>
     <view class="container">
-        <wd-swiper value-key="image_url" :list="swiperList" autoplay height="180px"></wd-swiper>
+        <view class="banner-wrap">
+            <wd-swiper v-if="swiperReady && swiperList.length" value-key="image_url" :list="swiperList"
+                :autoplay="swiperList.length > 1" height="180px"></wd-swiper>
+            <view v-else class="banner-skeleton"></view>
+        </view>
 
         <view class="block addressInfo">
             <view class="header">离您最近的门店【{{ BRAND_NAME }}】</view>
@@ -34,13 +38,8 @@
         <view class="block" v-for="category in categoryList" :key="category.id">
             <view class="brand-title">{{ category.typeName }}</view>
             <view class="grid">
-                <view
-                    class="grid-item"
-                    v-for="item in category.brands"
-                    :key="item.id"
-                    @click="gotoDetails(item)"
-                >
-                    <image class="cover" :src="item.logo" mode="widthFix" />
+                <view class="grid-item" v-for="item in category.brands" :key="item.id" @click="gotoDetails(item)">
+                    <image class="cover" :src="item.logo" mode="aspectFit" />
                     <view class="name">{{ item.brand }}</view>
                 </view>
             </view>
@@ -48,7 +47,7 @@
 
         <view class="block step">
             <view class="step-item" v-for="item in stepList" :key="item.id">
-                <image :src="item.icon" mode="widthFix" />
+                <image :src="item.icon" mode="aspectFit" />
                 <view>{{ item.name }}</view>
             </view>
         </view>
@@ -66,7 +65,7 @@
                 </view>
             </view>
             <view class="item">
-                <image src="@/static/wechat.png" mode="widthFix" class="cover-image" />
+                <image src="@/static/wechat.png" mode="aspectFit" class="cover-image" />
                 <button class="content reset-button" open-type="contact">
                     <wd-text bold color="#111" text="微信客服"></wd-text>
                     <view class="mt5"></view>
@@ -87,8 +86,9 @@ import CustomTabBar from '@/components/CustomTabBar.vue'
 import { onLoad, onShareAppMessage, onShow } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import { getMiniBanners, getMiniTypeBrands, getMiniDefaultAddress } from '@/apis/index'
-import { BASE_IMAGE_URL, BRAND_NAME } from '@/constant'
+import { BASE_IMAGE_URL, BRAND_NAME, SITE_CONFIG_KEY } from '@/constant'
 import { useToast } from 'wot-design-uni'
+import { getStorage } from '@/utils/StorageUtils'
 
 interface Product {
     id: number
@@ -136,6 +136,7 @@ const addressItem = ref({
 
 const wechatId = ref('-W061209')
 const swiperList = ref<SwiperItem[]>([])
+const swiperReady = ref(false)
 
 const handleClick = () => {
     uni.navigateTo({
@@ -171,7 +172,7 @@ const copyAddress = () => {
 const copyWechat = () => {
     uni.setClipboardData({
         data: wechatId.value,
-        success: () => {},
+        success: () => { },
         fail: (err) => {
             console.error('复制失败', err)
             toast.error('复制失败')
@@ -208,6 +209,14 @@ const callUser = () => {
 }
 
 const initData = async () => {
+    const siteConfig = getStorage<{ servicePhone?: string; contactWechat?: string }>(SITE_CONFIG_KEY)
+    if (siteConfig?.servicePhone) {
+        addressItem.value.phone = siteConfig.servicePhone
+    }
+    if (siteConfig?.contactWechat) {
+        wechatId.value = siteConfig.contactWechat
+    }
+
     const [defaultAddress, bannerRes, typeBrandsRes] = await Promise.all([
         getMiniDefaultAddress(),
         getMiniBanners({ page: 1, pageSize: 10 }),
@@ -223,7 +232,8 @@ const initData = async () => {
                 image_url: image.startsWith('http') ? image : `${BASE_IMAGE_URL}${image}`,
             }
         },
-    )
+    ).filter((item: SwiperItem) => !!item.image_url)
+    swiperReady.value = true
 
     const categories = typeBrandsRes?.categories || []
     categoryList.value = categories.map((category: CategoryItem) => ({
@@ -240,9 +250,9 @@ const initData = async () => {
         addressItem.value = {
             contactName: defaultAddress.user || '--',
             addressName: defaultAddress.fullAddress || defaultAddress.address || '--',
-            phone: defaultAddress.mobile || '--',
+            phone: siteConfig?.servicePhone || defaultAddress.mobile || '--',
         }
-        wechatId.value = defaultAddress.wechat || wechatId.value
+        wechatId.value = siteConfig?.contactWechat || defaultAddress.wechat || wechatId.value
     }
 }
 
@@ -270,15 +280,18 @@ onShareAppMessage(() => {
     align-items: flex-start;
     color: #222;
     font-size: 30rpx;
+
     &::after {
         border: none;
     }
 }
+
 :deep(.custom-bar) {
     font-size: 16px !important;
 }
+
 .nav {
-    background: linear-gradient(to bottom, #3e49ff, #f7f7f7);
+    background: linear-gradient(180deg, #2563eb 0%, #3b82f6 42%, #f3f6fb 100%);
     width: 100%;
     height: 200px;
     position: fixed;
@@ -288,24 +301,39 @@ onShareAppMessage(() => {
 }
 
 .container {
-    padding: 32rpx;
+    padding: 24rpx;
     padding-bottom: 200rpx; // 为底部 tabbar 留出空间
+
+    .banner-wrap {
+        height: 180px;
+    }
+
+    .banner-skeleton {
+        width: 100%;
+        height: 180px;
+        border-radius: 16rpx;
+        background: linear-gradient(90deg, #f2f3f5 25%, #e9ebef 50%, #f2f3f5 75%);
+        background-size: 200% 100%;
+        animation: skeleton-loading 1.2s linear infinite;
+    }
+
     .block {
-        background-color: #fff;
-        border-radius: 8px;
+        background-color: #ffffff;
+        border-radius: 20rpx;
         padding: 32rpx;
         margin-top: 20rpx;
+        box-shadow: 0 10rpx 26rpx rgba(15, 23, 42, 0.05);
 
         .brand-title {
             font-weight: 700;
-            font-size: 38rpx;
-            color: #1957ff;
+            font-size: 36rpx;
+            color: #1d4ed8;
             text-align: center;
-            padding: 28rpx 0 36rpx 0;
+            padding: 22rpx 0 30rpx 0;
             position: relative;
-            margin-bottom: 12rpx;
-            letter-spacing: 2rpx;
-            text-shadow: 0 2rpx 8rpx rgba(25, 87, 255, 0.2);
+            margin-bottom: 8rpx;
+            letter-spacing: 1rpx;
+            text-shadow: none;
 
             &::before,
             &::after {
@@ -314,13 +342,11 @@ onShareAppMessage(() => {
                 top: 50%;
                 transform: translateY(-50%);
                 width: 80rpx;
-                height: 3rpx;
-                background: linear-gradient(
-                    90deg,
-                    transparent 0%,
-                    rgba(25, 87, 255, 0.3) 50%,
-                    #1957ff 100%
-                );
+                height: 2rpx;
+                background: linear-gradient(90deg,
+                        transparent 0%,
+                        rgba(37, 99, 235, 0.28) 50%,
+                        #2563eb 100%);
                 border-radius: 2rpx;
             }
 
@@ -330,12 +356,10 @@ onShareAppMessage(() => {
 
             &::after {
                 right: 0;
-                background: linear-gradient(
-                    90deg,
-                    #1957ff 0%,
-                    rgba(25, 87, 255, 0.3) 50%,
-                    transparent 100%
-                );
+                background: linear-gradient(90deg,
+                        #2563eb 0%,
+                        rgba(37, 99, 235, 0.28) 50%,
+                        transparent 100%);
             }
         }
     }
@@ -370,6 +394,7 @@ onShareAppMessage(() => {
         grid-template-rows: 1fr;
         grid-column-gap: 15px;
         grid-row-gap: 15px;
+
         .grid-item {
             display: flex;
             flex-direction: column;
@@ -378,18 +403,21 @@ onShareAppMessage(() => {
 
             .cover {
                 width: 45px;
+                height: 45px;
                 display: block;
                 border-radius: 50%;
                 margin-bottom: 8px;
             }
+
             .name {
                 font-size: 24rpx;
-                color: #222;
+                color: #1f2937;
                 height: 30px;
                 text-align: center;
             }
         }
     }
+
     .step {
         display: flex;
         align-items: center;
@@ -401,34 +429,37 @@ onShareAppMessage(() => {
             align-items: center;
             flex-direction: column;
             font-size: 24rpx;
+
             image {
                 width: 20px;
+                height: 20px;
                 margin-bottom: 5px;
             }
         }
     }
 
     .addressInfo {
-        background-color: #1957ff;
-        border-radius: 8px;
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        border-radius: 20rpx;
         overflow: hidden;
         padding: 0;
         margin-top: 20rpx;
+        box-shadow: 0 14rpx 30rpx rgba(29, 78, 216, 0.2);
 
         .header {
-            background-color: #1957ff;
+            background-color: transparent;
             color: #fff;
             text-align: center;
             padding: 24rpx 32rpx;
-            font-size: 30rpx;
-            font-weight: 500;
+            font-size: 29rpx;
+            font-weight: 600;
         }
 
         .body {
             background-color: #fff;
             padding: 32rpx;
-            margin: 0 auto 16rpx auto;
-            width: 96%;
+            margin: 0 14rpx 14rpx 14rpx;
+            border-radius: 14rpx;
         }
 
         .info-row {
@@ -460,11 +491,12 @@ onShareAppMessage(() => {
             }
 
             .action-btn {
-                background-color: #1957ff;
+                background: linear-gradient(135deg, #2563eb, #1d4ed8);
                 color: #fff;
-                padding: 12rpx 32rpx;
-                border-radius: 8rpx;
-                font-size: 26rpx;
+                padding: 10rpx 28rpx;
+                border-radius: 10rpx;
+                font-size: 24rpx;
+                font-weight: 600;
                 white-space: nowrap;
             }
         }
@@ -476,6 +508,7 @@ onShareAppMessage(() => {
         grid-template-rows: 1fr;
         grid-column-gap: 0px;
         grid-row-gap: 0px;
+
         .item {
             display: flex;
             align-items: center;
@@ -483,11 +516,12 @@ onShareAppMessage(() => {
 
             .cover-image {
                 width: 30px;
+                height: 30px;
                 margin-right: 20rpx;
             }
 
             .cover {
-                background-color: #1957ff;
+                background: linear-gradient(135deg, #2563eb, #1d4ed8);
                 border-radius: 50%;
                 width: 30px;
                 height: 30px;
@@ -504,6 +538,16 @@ onShareAppMessage(() => {
                 line-height: 1.5;
             }
         }
+    }
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
     }
 }
 </style>

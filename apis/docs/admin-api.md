@@ -221,21 +221,41 @@
 
 ---
 
+## 5.1 系统配置（协议内容）
+
+### 列表/详情
+- `GET /configs?page=1&pageSize=20`
+- `GET /configs/:id`
+
+### 新增/编辑
+- `POST /configs`（鉴权: 是）
+- `PUT /configs/:id`（鉴权: 是）
+
+关键字段：
+- `userAgreement`：用户协议（富文本 HTML）
+- `privacyPolicy`：隐私政策（富文本 HTML）
+- `status`：1启用 0停用
+
+---
+
 ## 6. 订单管理
 
-- 状态定义：
-  - `1`: 待确认
-  - `2`: 进行中
-  - `3`: 已完成
+- 状态定义（新）：
+  - `inbound_status`: `10待入库 20已入库`
+  - `settlement_status`: `10待报价 20已报价 30待结算 40已结算 50退货中`
+- 兼容旧字段：
+  - `status`: `1待确认 2进行中 3已完成`
 
 ### 6.1 订单列表
-- `GET /orders?page=1&pageSize=20&status=1&type=2&keyword=顺丰`
+- `GET /orders?page=1&pageSize=20&inbound_status=10&settlement_status=10&type=2&keyword=顺丰`
 - 鉴权: 是
 - 说明: 管理员可查看全部订单，小程序用户仅返回自己的订单
 
 参数（可选）:
 - `page`、`pageSize`
-- `status`：`1/2/3`
+- `inbound_status`：`10/20`
+- `settlement_status`：`10/20/30/40/50`
+- `status`：`1/2/3`（兼容）
 - `type`：`1上门 2邮寄`
 - `way`：收货方式
 - `userid`：用户ID（管理员可用）

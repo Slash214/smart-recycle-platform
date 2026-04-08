@@ -42,6 +42,18 @@
 			"style": {
 				"navigationBarTitleText": "发货需知"
 			}
+		},
+		{
+			"path": "pages/setting/setting",
+			"style": {
+				"navigationBarTitleText": "设置"
+			}
+		},
+		{
+			"path": "pages/policy/policy",
+			"style": {
+				"navigationBarTitleText": "用户协议"
+			}
 		}
 	],
 	"globalStyle": {

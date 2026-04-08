@@ -8,6 +8,8 @@ async function miniRoutes(fastify) {
     fastify.get('/mini/type-brands', { schema: schema.typeBrandsSchema }, controller.typeBrands)
     fastify.get('/mini/brands/:id/images', { schema: schema.brandDetailImagesSchema }, controller.brandDetailImages)
     fastify.get('/mini/default-address', { schema: schema.defaultAddressSchema }, controller.defaultAddress)
+    fastify.get('/mini/policy', { schema: schema.policySchema }, controller.policy)
+    fastify.get('/mini/site-config', { schema: schema.siteConfigSchema }, controller.siteConfig)
 }
 
 module.exports = miniRoutes

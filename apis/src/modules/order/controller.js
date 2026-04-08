@@ -5,6 +5,14 @@ function isAdmin(request) {
     return request.user && request.user.role === 'admin'
 }
 
+function isValidInBoundStatus(status) {
+    return [10, 20].includes(parseInt(status, 10))
+}
+
+function isValidSettlementStatus(status) {
+    return [10, 20, 30, 40, 50].includes(parseInt(status, 10))
+}
+
 async function list(request) {
     const query = { ...(request.query || {}) }
     if (!isAdmin(request) && request.user && request.user.uid) {
@@ -37,8 +45,11 @@ async function create(request, reply) {
     if (!body.nums) {
         return reply.code(400).send(fail(40001, 'nums 必填'))
     }
-    if (body.status !== undefined && ![1, 2, 3].includes(parseInt(body.status, 10))) {
-        return reply.code(400).send(fail(40001, 'status 仅支持 1/2/3'))
+    if (body.inbound_status !== undefined && !isValidInBoundStatus(body.inbound_status)) {
+        return reply.code(400).send(fail(40001, 'inbound_status 仅支持 10/20'))
+    }
+    if (body.settlement_status !== undefined && !isValidSettlementStatus(body.settlement_status)) {
+        return reply.code(400).send(fail(40001, 'settlement_status 仅支持 10/20/30/40/50'))
     }
     return ok(await service.createOrder(body), '创建成功')
 }
@@ -51,8 +62,11 @@ async function update(request, reply) {
     }
 
     const body = { ...(request.body || {}) }
-    if (body.status !== undefined && ![1, 2, 3].includes(parseInt(body.status, 10))) {
-        return reply.code(400).send(fail(40001, 'status 仅支持 1/2/3'))
+    if (body.inbound_status !== undefined && !isValidInBoundStatus(body.inbound_status)) {
+        return reply.code(400).send(fail(40001, 'inbound_status 仅支持 10/20'))
+    }
+    if (body.settlement_status !== undefined && !isValidSettlementStatus(body.settlement_status)) {
+        return reply.code(400).send(fail(40001, 'settlement_status 仅支持 10/20/30/40/50'))
     }
     return ok(await service.updateOrder(request.params.id, body), '更新成功')
 }

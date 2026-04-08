@@ -7,6 +7,7 @@ const Banner = require('./banner')
 const Details = require('./detailes')
 const Help = require('./help')
 const Admin = require('./admin')
+const Config = require('./config')
 Phone.belongsTo(Brand, {
     foreignKey: 'brandId',
 })
@@ -36,4 +37,5 @@ module.exports = {
     Help,
     UserBrandInteraction,
     Admin,
+    Config,
 }

@@ -20,7 +20,7 @@ export const UserList = () => {
   const [status, setStatus] = React.useState<number | undefined>(1);
   const [keyword, setKeyword] = React.useState<string>("");
 
-  const { tableProps, setFilters, tableQueryResult } = useTable({
+  const { tableProps, setFilters, tableQuery } = useTable({
     syncWithLocation: true,
     filters: {
       permanent: [
@@ -51,7 +51,7 @@ export const UserList = () => {
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.message || "更新状态失败");
       message.success("用户状态更新成功");
-      tableQueryResult?.refetch?.();
+      tableQuery?.refetch?.();
     } catch (error) {
       message.error(error instanceof Error ? error.message : "更新状态失败");
     }

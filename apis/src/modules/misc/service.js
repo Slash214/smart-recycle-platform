@@ -1,4 +1,4 @@
-const { Address, Banner, Help } = require('../../../db/models')
+const { Address, Banner, Help, Config } = require('../../../db/models')
 
 function toPage(query = {}) {
     const page = Math.max(parseInt(query.page || 1, 10), 1)
@@ -32,6 +32,7 @@ module.exports = {
     Address,
     Banner,
     Help,
+    Config,
     listByModel,
     crud,
 }

@@ -11,14 +11,12 @@ export const OrderShow = () => {
 
   const record = data?.data;
 
-  const getStatusTag = (status: number) => {
+  const getInboundStatusTag = (status: number) => {
     switch (status) {
-      case 1:
-        return <Tag color="blue">待处理</Tag>;
-      case 2:
-        return <Tag color="orange">运输中</Tag>;
-      case 3:
-        return <Tag color="green">完成</Tag>;
+      case 10:
+        return <Tag color="gold">待入库</Tag>;
+      case 20:
+        return <Tag color="blue">已入库</Tag>;
       default:
         return <Tag color="default">未知</Tag>;
     }
@@ -32,6 +30,36 @@ export const OrderShow = () => {
         return <Tag color="green">邮寄</Tag>;
       default:
         return <Tag color="default">未知</Tag>;
+    }
+  };
+
+  const getSettlementStatusTag = (status: number) => {
+    switch (status) {
+      case 10:
+        return <Tag color="gold">待报价</Tag>;
+      case 20:
+        return <Tag color="cyan">已报价</Tag>;
+      case 30:
+        return <Tag color="orange">待结算</Tag>;
+      case 40:
+        return <Tag color="green">已结算</Tag>;
+      case 50:
+        return <Tag color="red">退货中</Tag>;
+      default:
+        return <Tag color="default">未知</Tag>;
+    }
+  };
+
+  const getWayText = (way: number) => {
+    switch (way) {
+      case 1:
+        return "微信收款";
+      case 2:
+        return "支付宝收款";
+      case 3:
+        return "银行卡收款";
+      default:
+        return "-";
     }
   };
 
@@ -49,8 +77,8 @@ export const OrderShow = () => {
       <Title level={5}>{"类型"}</Title>
       {record?.type && getDeliveryMethodTag(record.type)}
 
-      <Title level={5}>{"收货方式"}</Title>
-      <TextField value={record?.way || "-"} />
+      <Title level={5}>{"收款方式"}</Title>
+      <TextField value={getWayText(record?.way)} />
       
       <Title level={5}>{"快递单号"}</Title>
       <TextField value={record?.tracking_number || "-"} />
@@ -58,8 +86,11 @@ export const OrderShow = () => {
       <Title level={5}>{"快递公司"}</Title>
       <TextField value={record?.express_company || "-"} />
       
-      <Title level={5}>{"状态"}</Title>
-      {record?.status !== undefined && getStatusTag(record.status)}
+      <Title level={5}>{"入库状态"}</Title>
+      {record?.inbound_status !== undefined && getInboundStatusTag(record.inbound_status)}
+      
+      <Title level={5}>{"结算状态"}</Title>
+      {record?.settlement_status !== undefined && getSettlementStatusTag(record.settlement_status)}
       
       <Title level={5}>{"备注"}</Title>
       <TextField value={record?.remark || "-"} />

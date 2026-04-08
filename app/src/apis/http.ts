@@ -11,15 +11,25 @@ import type { RequestOptions, RequestError, ApiResponse } from '@/models/index'
 function buildQueryString(params: Record<string, any>): string {
 	if (!params) return '';
 
-	const queryArray = Object.keys(params).map((key) => {
-		const val = params[key];
-		// 如果值是对象或数组，就 stringify
-		if (val && typeof val === 'object') {
-			return `${encodeURIComponent(key)}=${encodeURIComponent(JSON.stringify(val))}`;
-		} else {
+	const queryArray = Object.keys(params)
+		.filter((key) => {
+			const val = params[key];
+			// 过滤空值，避免出现 status=undefined 这类非法参数
+			if (val === undefined || val === null || val === '') return false;
+			if (typeof val === 'string') {
+				const normalized = val.trim().toLowerCase();
+				if (normalized === 'undefined' || normalized === 'null') return false;
+			}
+			return true;
+		})
+		.map((key) => {
+			const val = params[key];
+			// 如果值是对象或数组，就 stringify
+			if (val && typeof val === 'object') {
+				return `${encodeURIComponent(key)}=${encodeURIComponent(JSON.stringify(val))}`;
+			}
 			return `${encodeURIComponent(key)}=${encodeURIComponent(val)}`;
-		}
-	});
+		});
 
 	const query = queryArray.join('&');
 	return query ? `?${query}` : '';

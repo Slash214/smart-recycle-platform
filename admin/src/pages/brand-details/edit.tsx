@@ -95,8 +95,8 @@ export const BrandDetailEdit = () => {
             const imageUrls = await captureHTMLToImages(
                 content,
                 {
-                    maxHeight: 3000, // 降低单张图片最大高度，避免内存问题
-                    quality: 0.85, // 降低质量，减少文件大小
+                    maxHeight: 4200,
+                    quality: 0.95,
                 },
                 (current, total, step) => {
                     // 更新进度

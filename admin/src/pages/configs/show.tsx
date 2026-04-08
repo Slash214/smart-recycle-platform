@@ -45,6 +45,20 @@ export const ConfigShow = () => {
       
       <Title level={5}>{"备注说明"}</Title>
       <TextField value={record?.remark || "-"} />
+
+      <Title level={5}>{"用户协议"}</Title>
+      {record?.userAgreement ? (
+        <div dangerouslySetInnerHTML={{ __html: record.userAgreement }} />
+      ) : (
+        <TextField value="-" />
+      )}
+
+      <Title level={5}>{"隐私政策"}</Title>
+      {record?.privacyPolicy ? (
+        <div dangerouslySetInnerHTML={{ __html: record.privacyPolicy }} />
+      ) : (
+        <TextField value="-" />
+      )}
       
       <Title level={5}>{"创建时间"}</Title>
       <DateField value={record?.createdAt} format="YYYY年MM月DD日 HH:mm:ss" />

@@ -2,18 +2,25 @@
     <view class="container">
         <view class="card address-card">
             <view class="address-main">
-                <view class="line">{{ addressItem.contactName }}{{ addressItem.phone }}</view>
-                <view class="line sub">{{ addressItem.addressName }}</view>
+                <view class="address-title">寄件信息</view>
+                <view class="line">
+                    <text class="name">{{ addressItem.contactName || '未设置姓名' }}</text>
+                    <text class="phone">{{ addressItem.phone || '未设置电话' }}</text>
+                </view>
+                <view class="line sub">{{ addressItem.addressName || '未设置门店地址' }}</view>
             </view>
             <view class="address-copy" @click="copyAddress">
-                <wd-icon name="copy" size="18px" color="#888"></wd-icon>
+                <wd-icon name="copy" size="15px" color="#2563eb"></wd-icon>
             </view>
         </view>
 
-        <view class="card pay-card" @click="choosePayMethod">
-            <text :class="['pay-text', payMethodRef ? 'active' : '']">{{
-                payMethodRef || '请选择收款方式'
-            }}</text>
+        <view class="card pay-card">
+            <view class="pay-label">收款方式</view>
+            <view class="pay-value-wrap">
+                <text :class="['pay-text', payMethodText ? 'active' : '']">{{
+                    payMethodText || '请选择收款方式'
+                }}</text>
+            </view>
         </view>
 
         <view class="card form-card">
@@ -79,7 +86,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { createOrder, getMiniDefaultAddress, uploadImageFile } from '@/apis/index'
 import { useToast } from 'wot-design-uni'
 import { getStorage } from '@/utils/StorageUtils'
@@ -88,15 +95,22 @@ import { onLoad } from '@dcloudio/uni-app'
 import type { AddressItem } from '@/models'
 
 const toast = useToast()
-const payMethodList = ['微信收款', '支付宝收款', '银行卡收款']
+const payMethodList = [
+    { label: '微信收款', value: 1 as const },
+    { label: '支付宝收款', value: 2 as const },
+    { label: '银行卡收款', value: 3 as const },
+]
 const courierList = ['顺丰快递', '京东快递', '中通快递', '圆通快递']
 
-const payMethodRef = ref('微信收款')
+const payMethodRef = ref<1 | 2 | 3>(1)
 const countRef = ref('')
 const remarkRef = ref('')
 const courierRef = ref('顺丰快递')
 const trackingNumberRef = ref('')
 const remarkImageRef = ref('')
+const payMethodText = computed(() => {
+    return payMethodList.find((item) => item.value === payMethodRef.value)?.label || ''
+})
 
 const addressItem = ref<AddressItem>({
     id: 0,
@@ -109,9 +123,9 @@ const timer = ref<any>(null)
 
 const choosePayMethod = () => {
     uni.showActionSheet({
-        itemList: payMethodList,
+        itemList: payMethodList.map((item) => item.label),
         success: (res) => {
-            payMethodRef.value = payMethodList[res.tapIndex] || payMethodRef.value
+            payMethodRef.value = payMethodList[res.tapIndex]?.value || payMethodRef.value
         },
     })
 }
@@ -180,15 +194,18 @@ const onSubmit = async () => {
             toast.warning('请先完善联系电话')
             return
         }
+        const cleanedRemarkImages = remarkImageRef.value
+            ? [String(remarkImageRef.value).trim()].filter((item) => !!item)
+            : []
         await createOrder({
             nums: Number(countRef.value),
-            phone: contactPhone,
+            phone: String(contactPhone),
             type: 2,
             way: payMethodRef.value,
-            tracking_number: trackingNumberRef.value,
-            express_company: courierRef.value,
-            remark: remarkRef.value,
-            remark_images: remarkImageRef.value ? [remarkImageRef.value] : [],
+            tracking_number: String(trackingNumberRef.value).trim(),
+            express_company: String(courierRef.value).trim(),
+            remark: String(remarkRef.value || '').trim(),
+            remark_images: cleanedRemarkImages,
             status: 1,
         })
         toast.success('下单成功')
@@ -234,59 +251,107 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .container {
-    padding: 32rpx;
-    padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
-    background: #f5f6f8;
+    padding: 24rpx;
+    padding-bottom: calc(130rpx + env(safe-area-inset-bottom));
+    background: #f3f6fb;
     min-height: 100vh;
 }
 
 .card {
     border-radius: 18rpx;
-    padding: 26rpx 30rpx;
+    padding: 24rpx;
     background-color: #fff;
-    margin-bottom: 20rpx;
-    box-shadow: 0 6rpx 18rpx rgba(17, 24, 39, 0.04);
+    margin-bottom: 16rpx;
+    border: 1px solid #e7edf6;
+    box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.04);
 }
 
 .address-card {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     .address-main {
         flex: 1;
+        padding-right: 16rpx;
+        .address-title {
+            font-size: 22rpx;
+            color: #94a3b8;
+            margin-bottom: 8rpx;
+            letter-spacing: 1rpx;
+        }
         .line {
-            font-size: 30rpx;
-            color: #222;
-            line-height: 1.6;
+            font-size: 32rpx;
+            color: #111827;
+            line-height: 1.35;
+            display: flex;
+            align-items: baseline;
+            .name {
+                font-weight: 600;
+                margin-right: 12rpx;
+                max-width: 220rpx;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .phone {
+                color: #0f172a;
+                font-size: 31rpx;
+            }
         }
         .sub {
-            color: #666;
+            color: #6b7280;
+            margin-top: 8rpx;
+            font-size: 30rpx;
+            line-height: 1.4;
         }
     }
     .address-copy {
-        width: 52rpx;
+        width: 56rpx;
+        height: 56rpx;
+        border-radius: 50%;
+        border: 1px solid #cfe0ff;
+        background: linear-gradient(180deg, #f8fbff 0%, #edf4ff 100%);
         display: flex;
         justify-content: center;
         align-items: center;
+        margin-top: 10rpx;
     }
 }
 
 .pay-card {
-    text-align: center;
+    padding-top: 18rpx;
+    padding-bottom: 18rpx;
+    .pay-label {
+        font-size: 22rpx;
+        color: #94a3b8;
+        margin-bottom: 8rpx;
+        letter-spacing: 1rpx;
+    }
+    .pay-value-wrap {
+        min-height: 56rpx;
+        border-radius: 12rpx;
+        background: #f8fbff;
+        border: 1px solid #dbe7ff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 18rpx;
+    }
     .pay-text {
-        font-size: 40rpx;
+        font-size: 32rpx;
         font-weight: 600;
-        color: #1f63ff;
+        color: #2563eb;
+        letter-spacing: 0;
     }
     .active {
-        color: #222;
+        color: #0f172a;
     }
 }
 
 .form-card {
-    padding-top: 20rpx;
+    padding-top: 12rpx;
     .field {
-        margin-bottom: 22rpx;
+        margin-bottom: 18rpx;
     }
 
     .no-margin {
@@ -294,9 +359,9 @@ onUnmounted(() => {
     }
 
     .label {
-        font-size: 26rpx;
-        color: #666;
-        margin-bottom: 10rpx;
+        font-size: 25rpx;
+        color: #6b7280;
+        margin-bottom: 8rpx;
         position: relative;
         display: inline-block;
     }
@@ -308,44 +373,46 @@ onUnmounted(() => {
     }
 
     .input-wrap {
-        min-height: 68rpx;
-        border: 1px solid #d9dee8;
-        border-radius: 14rpx;
+        min-height: 76rpx;
+        border: 1px solid #dbe5f3;
+        border-radius: 12rpx;
         padding: 0 20rpx;
         display: flex;
         align-items: center;
         justify-content: space-between;
         background: #fff;
+        transition: all 0.2s ease;
     }
 
     .picker {
         .placeholder {
-            color: #999;
-            font-size: 30rpx;
+            color: #9ca3af;
+            font-size: 29rpx;
         }
         .active {
-            color: #222;
+            color: #1f2937;
         }
     }
 
     .native-input {
         flex: 1;
-        height: 68rpx;
-        font-size: 30rpx;
-        color: #222;
+        height: 76rpx;
+        font-size: 29rpx;
+        color: #111827;
     }
 
     .upload-wrap {
-        border: 1px solid #d8d8d8;
-        border-radius: 14rpx;
-        padding: 16rpx;
+        border: 1px dashed #cfd9e8;
+        border-radius: 12rpx;
+        padding: 14rpx;
+        background: #fafcff;
     }
 
     .upload-box {
         width: 120rpx;
         height: 120rpx;
-        background: #f5f5f5;
-        border-radius: 8rpx;
+        background: #f3f6fb;
+        border-radius: 10rpx;
         overflow: hidden;
     }
 
@@ -363,26 +430,28 @@ onUnmounted(() => {
 }
 
 .fix-bottom {
-    background-color: #fff;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
     height: auto;
     width: 100%;
     position: fixed;
     bottom: 0;
     left: 0;
-    padding: 12rpx 0 calc(12rpx + env(safe-area-inset-bottom));
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+    padding: 14rpx 0 calc(14rpx + env(safe-area-inset-bottom));
+    box-shadow: 0 -6rpx 20rpx rgba(15, 23, 42, 0.08);
     .button {
-        height: 72rpx;
+        height: 80rpx;
         margin: 0 auto;
-        width: calc(100% - 64rpx);
-        border-radius: 12rpx;
+        width: calc(100% - 48rpx);
+        border-radius: 14rpx;
         display: flex;
         align-items: center;
         justify-content: center;
         color: #fff;
-        font-size: 34rpx;
+        font-size: 32rpx;
         font-weight: 600;
-        background: linear-gradient(90deg, #2f5fe9 0%, #3f74ff 100%);
+        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        letter-spacing: 2rpx;
     }
 }
 </style>

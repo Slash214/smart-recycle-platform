@@ -193,6 +193,10 @@ export const customDataProvider: DataProvider = {
           if (f.operator === "contains" && f.value !== undefined && f.field && f.value !== "") {
             query[String(f.field)] = String(f.value);
           }
+          // 支持时间范围筛选
+          if ((f.operator === "gte" || f.operator === "lte") && f.value !== undefined && f.field && f.value !== "") {
+            query[String(f.field)] = String(f.value);
+          }
           // 支持 in 操作符（用于筛选多个值）
           if (f.operator === "in" && Array.isArray(f.value) && f.value.length > 0 && f.field) {
             query[`${String(f.field)}In`] = f.value.join(",");

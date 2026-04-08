@@ -1,41 +1,27 @@
 <template>
     <view class="order-card">
-        <!-- 头部区域：快递公司、订单状态 -->
         <view class="header">
-            <text class="courier">{{ order.shippingMethod }}</text>
+            <text class="courier">{{ order.express_company || '-' }}</text>
             <text class="status">{{ statusText }}</text>
         </view>
-
-        <!-- 内容区域：运单号、发件电话、快递方式、数量、价格等 -->
         <view class="content">
-            <view class="row"  v-if="order.shippingMethod !== '送货上门'">
-                <text class="label">运单号：</text>
-                <text class="value">{{ order.trackingNumber }}</text>
-            </view>
-
-            <view class="row" v-if="order.shippingMethod !== '送货上门'">
-                <text class="label">发件电话：</text>
-
-                <wd-text :text="order.senderPhone" mode="phone" :format="true"></wd-text>
-            </view>
-
             <view class="row">
-                <text class="label">快递公司：</text>
-                <text class="value">{{ order.courier }}</text>
+                <text class="label">运单号：</text>
+                <text class="value">{{ order.tracking_number || '-' }}</text>
             </view>
-
+            <view class="row">
+                <text class="label">联系电话：</text>
+                <wd-text :text="order.phone || '-'" mode="phone" :format="true"></wd-text>
+            </view>
             <view class="row">
                 <text class="label">数量：</text>
-                <text class="value">{{ order.quantity }}</text>
+                <text class="value">{{ order.nums || 0 }}</text>
             </view>
-
             <view class="row price-row">
-                <text class="label">价格：</text>
-                <text class="value price-value">¥{{ order.price }}</text>
+                <text class="label">收款方式：</text>
+                <text class="value price-value">{{ payWayText }}</text>
             </view>
         </view>
-
-        <!-- 底部区域：下单时间 -->
         <view class="footer">
             <text class="time">{{ formattedCreatedAt }}</text>
         </view>
@@ -48,49 +34,53 @@ import { computed, defineProps } from 'vue'
 /** 订单数据结构 */
 interface Order {
     id: number
-    courier: string
+    phone: string
+    nums: number
+    type: number
+    way: number
+    tracking_number: string
+    express_company: string
+    inbound_status: number
+    settlement_status: number
     createdAt: string
-    updatedAt: string
-    price: string
-    quantity: number
-    senderPhone: string
-    shippingMethod: string
-    status: number
-    trackingNumber: string
-    userId: number
 }
 
-/**
- * 接收订单数据的 props
- * 你可以把这个组件当做子组件，父组件中用 :order="..." 传入数据
- */
 const props = defineProps<{
     order: Order
 }>()
 
-/**
- * 根据订单 status 返回对应的文字
- * 0: 待发货, 1: 已发货, 2: 已收货, 可按需扩展
- */
 const statusText = computed(() => {
-    switch (props.order.status) {
-        case 0:
-            return '待发货'
-        case 1:
-            return '已发货'
-        case 2:
-            return '已收货'
+    switch (props.order.settlement_status) {
+        case 10:
+            return '待报价'
+        case 20:
+            return '已报价'
+        case 30:
+            return '待结算'
+        case 40:
+            return '已结算'
+        case 50:
+            return '退货中'
         default:
             return '未知状态'
     }
 })
 
-/**
- * 格式化订单创建时间
- */
+const payWayText = computed(() => {
+    switch (props.order.way) {
+        case 1:
+            return '微信收款'
+        case 2:
+            return '支付宝收款'
+        case 3:
+            return '银行卡收款'
+        default:
+            return '-'
+    }
+})
+
 const formattedCreatedAt = computed(() => {
     const date = new Date(props.order.createdAt)
-    // 简单示例：yyyy-MM-dd HH:mm
     const y = date.getFullYear()
     const m = String(date.getMonth() + 1).padStart(2, '0')
     const d = String(date.getDate()).padStart(2, '0')

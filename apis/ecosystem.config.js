@@ -1,17 +1,20 @@
+const path = require('path')
+
 module.exports = {
   apps: [
     {
-      name: 'apis',       // 应用名称
-      script: 'bin/www',   // 启动脚本
-      instances: 'max',     // 启动实例数量，使用 'max' 表示根据CPU核心数启动相应数量的实例
-      exec_mode: 'cluster', // 使用 cluster 模式
-      watch: true,  
+      name: 'sm-api',
+      cwd: __dirname,
+      script: path.join(__dirname, 'src/server.js'),
+      instances: 1,
+      exec_mode: 'fork',
+      watch: false,
       env: {
         NODE_ENV: 'development',
       },
       env_production: {
         NODE_ENV: 'production',
-      }
-    }
-  ]
-};
+      },
+    },
+  ],
+}

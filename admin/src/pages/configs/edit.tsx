@@ -1,6 +1,7 @@
 import { Edit, useForm } from "@refinedev/antd";
 import { Form, Input, Switch } from "antd";
 import React from "react";
+import { RichTextEditor } from "../../components/rich-text-editor";
 
 const { TextArea } = Input;
 
@@ -131,6 +132,14 @@ export const ConfigEdit = () => {
             showCount
             maxLength={500}
           />
+        </Form.Item>
+
+        <Form.Item label={"用户协议"} name={["userAgreement"]}>
+          <RichTextEditor height={360} />
+        </Form.Item>
+
+        <Form.Item label={"隐私政策"} name={["privacyPolicy"]}>
+          <RichTextEditor height={360} />
         </Form.Item>
 
         <Form.Item

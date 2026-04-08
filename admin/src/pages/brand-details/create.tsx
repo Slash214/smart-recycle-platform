@@ -77,7 +77,7 @@ export const BrandDetailCreate = () => {
             setUploadStep("准备截图...");
             const imageUrls = await captureHTMLToImages(
                 content,
-                { maxHeight: 3000, quality: 0.85 },
+                { maxHeight: 4200, quality: 0.95 },
                 (current, total, step) => {
                     const percent = total > 0 ? Math.round((current / total) * 100) : 0;
                     setUploadProgress(percent);

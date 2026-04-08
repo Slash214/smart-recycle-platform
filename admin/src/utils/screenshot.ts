@@ -101,8 +101,8 @@ export async function captureHTMLToImages(
   onProgress?: (current: number, total: number, step: string) => void
 ): Promise<string[]> {
   const {
-    maxHeight = 3000, // 降低默认单张图片最大高度到 3000px，避免内存问题
-    quality = 0.85, // 降低质量，减少文件大小
+    maxHeight = 4200,
+    quality = 0.95,
     backgroundColor = '#ffffff',
   } = options;
 
@@ -134,7 +134,7 @@ export async function captureHTMLToImages(
   
   // 创建临时容器
   const container = document.createElement('div');
-  container.style.width = '750px'; // 调整为750px，匹配表格宽度
+  container.style.width = '1080px';
   container.style.padding = '0'; // 移除 padding，避免空白区域
   container.style.margin = '0'; // 移除 margin
   container.style.backgroundColor = backgroundColor;
@@ -169,12 +169,12 @@ export async function captureHTMLToImages(
 
     // 如果内容高度小于最大高度，直接截图
     if (totalHeight <= maxHeight) {
-      // 使用 SnapDOM 进行截图，降低 scale 避免内存问题
+      // 使用更高精度截图，提升文字与表格细节清晰度
       const result = await snapdom.toBlob(container, {
         type: 'jpg',
         quality,
         backgroundColor,
-        scale: 1.5, // 降低 scale 从 2 到 1.5，减少内存占用
+        scale: 2.5,
         embedFonts: true, // 嵌入字体
         fast: false, // 关闭快速模式，提高稳定性
       });
@@ -234,7 +234,7 @@ export async function captureHTMLToImages(
         
         // 创建分段容器
         const segmentContainer = document.createElement('div');
-        segmentContainer.style.width = '750px'; // 调整为750px，匹配表格宽度
+        segmentContainer.style.width = '1080px';
         segmentContainer.style.height = `${segmentHeight}px`;
         segmentContainer.style.overflow = 'hidden';
         segmentContainer.style.padding = '0'; // 移除 padding，避免空白区域
@@ -254,12 +254,12 @@ export async function captureHTMLToImages(
         // 等待内容渲染
         await new Promise(resolve => setTimeout(resolve, 200));
 
-        // 使用 SnapDOM 进行分段截图，降低 scale 避免内存问题
+        // 使用更高精度截图，提升文字与表格细节清晰度
         const result = await snapdom.toBlob(segmentContainer, {
           type: 'jpg',
           quality,
           backgroundColor,
-          scale: 1.5, // 降低 scale 从 2 到 1.5，减少内存占用
+          scale: 2.5,
           embedFonts: true,
           fast: false, // 关闭快速模式，提高稳定性
           height: segmentHeight,
@@ -337,7 +337,7 @@ export async function previewHTMLAsImage(htmlContent: string): Promise<string> {
   
   // 创建容器
   const container = document.createElement('div');
-  container.style.width = '750px'; // 调整为750px，匹配表格宽度
+  container.style.width = '1080px';
   container.style.padding = '0'; // 移除 padding，避免空白区域
   container.style.margin = '0'; // 移除 margin
   container.style.backgroundColor = '#ffffff';
@@ -367,11 +367,11 @@ export async function previewHTMLAsImage(htmlContent: string): Promise<string> {
       throw new Error('内容为空，无法生成预览');
     }
 
-    // 使用 SnapDOM 生成预览，降低 scale 避免内存问题
+    // 使用更高精度预览，避免预览与最终成图差异过大
     const img = await snapdom.toJpg(container, {
-      quality: 0.85, // 降低质量
+      quality: 0.95,
       backgroundColor: '#ffffff',
-      scale: 1.5, // 降低 scale 从 2 到 1.5，减少内存占用
+      scale: 2.5,
       embedFonts: true,
       fast: false, // 关闭快速模式，提高稳定性
     });

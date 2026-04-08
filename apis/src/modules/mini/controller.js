@@ -7,6 +7,8 @@ const {
     getMiniDefaultAddress,
     listTypeWithBrandsForMini,
     getMiniBrandDetailImages,
+    getMiniPolicy,
+    getMiniSiteConfig,
 } = require('./service')
 
 async function silentLogin(request, reply) {
@@ -73,6 +75,20 @@ async function brandDetailImages(request, reply) {
     return ok(data, 'ok')
 }
 
+async function policy(request, reply) {
+    const type = String(request.query?.type || 'agreement')
+    if (!['agreement', 'privacy'].includes(type)) {
+        return reply.code(400).send(fail(40001, 'type 仅支持 agreement/privacy'))
+    }
+    const data = await getMiniPolicy(type)
+    return ok(data, 'ok')
+}
+
+async function siteConfig() {
+    const data = await getMiniSiteConfig()
+    return ok(data, 'ok')
+}
+
 module.exports = {
     silentLogin,
     banners,
@@ -80,4 +96,6 @@ module.exports = {
     defaultAddress,
     typeBrands,
     brandDetailImages,
+    policy,
+    siteConfig,
 }

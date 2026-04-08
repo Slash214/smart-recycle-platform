@@ -16,7 +16,9 @@ export const OrderCreate = () => {
             ...values,
             nums: Number(values.nums || 0),
             type: Number(values.type || 1),
-            status: Number(values.status || 1),
+            way: Number(values.way || 1),
+            inbound_status: Number(values.inbound_status || 10),
+            settlement_status: Number(values.settlement_status || 10),
             remark_images: Array.isArray(values.remark_images) ? values.remark_images : [],
           };
           return formProps.onFinish?.(submitData);
@@ -68,10 +70,18 @@ export const OrderCreate = () => {
         </Form.Item>
 
         <Form.Item
-          label={"收货方式"}
+          label={"收款方式"}
           name={["way"]}
+          initialValue={1}
         >
-          <Input placeholder="请输入收货方式" />
+          <Select
+            placeholder="请选择收款方式"
+            options={[
+              { value: 1, label: "微信收款" },
+              { value: 2, label: "支付宝收款" },
+              { value: 3, label: "银行卡收款" },
+            ]}
+          />
         </Form.Item>
 
         <Form.Item
@@ -89,17 +99,34 @@ export const OrderCreate = () => {
         </Form.Item>
 
         <Form.Item
-          label={"状态"}
-          name={["status"]}
-          initialValue={1}
+          label={"入库状态"}
+          name={["inbound_status"]}
+          initialValue={10}
           rules={[{ required: true, message: "请选择状态" }]}
         >
           <Select
             placeholder="请选择状态"
             options={[
-              { value: 1, label: "待处理" },
-              { value: 2, label: "运输中" },
-              { value: 3, label: "完成" },
+              { value: 10, label: "待入库" },
+              { value: 20, label: "已入库" },
+            ]}
+          />
+        </Form.Item>
+
+        <Form.Item
+          label={"结算状态"}
+          name={["settlement_status"]}
+          initialValue={10}
+          rules={[{ required: true, message: "请选择结算状态" }]}
+        >
+          <Select
+            placeholder="请选择结算状态"
+            options={[
+              { value: 10, label: "待报价" },
+              { value: 20, label: "已报价" },
+              { value: 30, label: "待结算" },
+              { value: 40, label: "已结算" },
+              { value: 50, label: "退货中" },
             ]}
           />
         </Form.Item>

@@ -1,5 +1,5 @@
 const { ok, toPaginationMeta } = require('../../common/response')
-const { Address, Banner, Help, listByModel, crud } = require('./service')
+const { Address, Banner, Help, Config, listByModel, crud } = require('./service')
 
 function registerCrud(fastify, resource, Model, authWrite = true) {
     fastify.get(`/${resource}`, { tags: [resource] }, async (request) => {
@@ -26,6 +26,7 @@ async function miscRoutes(fastify) {
     registerCrud(fastify, 'addresses', Address)
     registerCrud(fastify, 'banners', Banner)
     registerCrud(fastify, 'helps', Help)
+    registerCrud(fastify, 'configs', Config)
 }
 
 module.exports = miscRoutes

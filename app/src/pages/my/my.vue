@@ -4,12 +4,7 @@
 
     <view class="container">
         <view class="profile-card">
-            <button
-                class="avatar-button"
-                @click="chooseAvatar"
-                open-type="chooseAvatar"
-                @chooseavatar="onChooseAvatar"
-            >
+            <button class="avatar-button" @click="chooseAvatar" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
                 <image :src="avatarUrl || defaultAvatar" mode="aspectFill" class="avatar" @error="handleAvatarError" />
             </button>
 
@@ -17,12 +12,7 @@
                 <template v-if="isLoggedIn">
                     <view class="nickname">{{ displayName }}</view>
                 </template>
-                <button
-                    class="login-button"
-                    v-else
-                    open-type="getPhoneNumber"
-                    @getphonenumber="onGetPhoneNumber"
-                >
+                <button class="login-button" v-else open-type="getPhoneNumber" @getphonenumber="onGetPhoneNumber">
                     点击登录
                 </button>
             </view>
@@ -33,7 +23,7 @@
             <view class="order-status-list">
                 <view class="status-item" v-for="item in orderMenus" :key="item.id" @click="handleClick(item.type)">
                     <view class="icon-circle">
-                        <wd-icon :name="item.icon" size="36rpx" color="#666"></wd-icon>
+                        <wd-icon :name="item.icon" size="34rpx" color="#2563eb"></wd-icon>
                     </view>
                     <text class="status-text">{{ item.name }}</text>
                 </view>
@@ -41,10 +31,10 @@
         </view>
 
         <view class="menu-list">
-            <view class="menu-item" v-for="item in panelMenus" :key="item.id">
+            <view class="menu-item" v-for="item in panelMenus" :key="item.id" @click="handlePanelClick(item)">
                 <view class="left">
                     <view class="menu-icon">
-                        <wd-icon :name="item.icon" size="30rpx" color="#666"></wd-icon>
+                        <wd-icon :name="item.icon" size="28rpx" color="#2563eb"></wd-icon>
                     </view>
                     <view class="menu-text">{{ item.name }}</view>
                 </view>
@@ -59,7 +49,7 @@
 <script lang="ts" setup>
 import CustomNavBar from '@/components/CustomNavBar.vue'
 import CustomTabBar from '@/components/CustomTabBar.vue'
-import { USER_KEY } from '@/constant'
+import { BRAND_NAME, SITE_CONFIG_KEY, USER_KEY } from '@/constant'
 import { getStorage, setStorage } from '@/utils/StorageUtils'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
@@ -81,29 +71,41 @@ const isLoggedIn = computed(() => {
 })
 
 const displayName = computed(() => {
-    const userName = userInfo.value?.userName || userInfo.value?.username
-    if (userName) return userName
-    if (userInfo.value?.mobile) return userInfo.value.mobile
-    return idName.value ? `用户${idName.value}` : '已登录用户'
+    // const userName = userInfo.value?.userName || userInfo.value?.username
+    // if (userName) return userName
+    // if (userInfo.value?.mobile) return userInfo.value.mobile
+    return `${BRAND_NAME}用户`
 })
 
 const orderMenus = ref([
-    { id: 1, name: '待确认', icon: 'clock', type: 0 },
-    { id: 2, name: '进行中', icon: 'refresh1', type: 1 },
-    { id: 3, name: '已完成', icon: 'check-circle', type: 2 },
+    { id: 1, name: '待入库', icon: 'clock', type: 0 },
+    { id: 2, name: '待结算', icon: 'refresh1', type: 1 },
+    { id: 3, name: '已结算', icon: 'check-circle', type: 2 },
     { id: 4, name: '我的订单', icon: 'list', type: 0 },
 ])
 
 const panelMenus = ref([
-    { id: 1, name: '订单地址', icon: 'location' },
-    { id: 2, name: '联系我们', icon: 'service' },
-    { id: 3, name: '设置', icon: 'setting' },
+    { id: 1, name: '联系我们', icon: 'service', action: 'contact' },
+    { id: 2, name: '设置', icon: 'setting', action: 'setting' },
 ])
 
 const handleClick = (type: number) => {
     uni.navigateTo({
         url: `/pages/order-list/order-list?type=${type}`,
     })
+}
+
+const handlePanelClick = (item: { action?: string }) => {
+    if (item.action === 'setting') {
+        uni.navigateTo({ url: '/pages/setting/setting' })
+        return
+    }
+    if (item.action === 'contact') {
+        const siteConfig = getStorage<{ servicePhone?: string }>(SITE_CONFIG_KEY)
+        const phone = siteConfig?.servicePhone || userInfo.value?.mobile || '13556888981'
+        uni.makePhoneCall({ phoneNumber: String(phone) })
+        return
+    }
 }
 
 const onGetPhoneNumber = async (e: any) => {
@@ -222,9 +224,7 @@ const loadUserInfo = () => {
     }
 }
 
-onLoad(() => {
-    loadUserInfo()
-})
+
 
 onShow(() => {
     // 每次显示页面时刷新用户信息，避免 createUser 尚未完成时 id 为空
@@ -242,7 +242,7 @@ onShow(() => {
 
 <style scoped lang="scss">
 .nav {
-    background: linear-gradient(180deg, #3f46f8 0%, #4f6df6 100%);
+    background: linear-gradient(180deg, #2563eb 0%, #3b82f6 58%, #f3f6fb 100%);
     width: 100%;
     height: 420rpx;
     position: fixed;
@@ -252,19 +252,20 @@ onShow(() => {
 }
 
 .container {
-    padding: 32rpx;
+    padding: 24rpx;
     padding-bottom: 220rpx;
 
     .profile-card {
         display: flex;
         align-items: center;
-        padding: 34rpx 0 28rpx;
+        padding: 34rpx 4rpx 30rpx;
 
         .avatar-button {
             padding: 0;
             margin: 0;
             background: none;
             border: none;
+
             &::after {
                 border: none;
             }
@@ -275,6 +276,8 @@ onShow(() => {
             height: 104rpx;
             border-radius: 24rpx;
             background-color: rgba(255, 255, 255, 0.95);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 10rpx 24rpx rgba(15, 23, 42, 0.2);
         }
 
         .profile-content {
@@ -283,9 +286,10 @@ onShow(() => {
             color: #fff;
 
             .nickname {
-                font-size: 40rpx;
+                font-size: 42rpx;
                 font-weight: 600;
                 letter-spacing: 1rpx;
+                text-shadow: 0 2rpx 8rpx rgba(15, 23, 42, 0.2);
             }
         }
     }
@@ -297,6 +301,7 @@ onShow(() => {
         color: #fff;
         font-size: 32rpx;
         line-height: 1.4;
+
         &::after {
             border: none;
         }
@@ -304,20 +309,22 @@ onShow(() => {
 
     .order-card {
         background-color: #fff;
-        border-radius: 16rpx;
+        border-radius: 20rpx;
         padding: 22rpx 18rpx;
         margin-top: 24rpx;
         display: flex;
         align-items: center;
+        border: 1px solid #e7edf6;
+        box-shadow: 0 8rpx 22rpx rgba(15, 23, 42, 0.05);
 
         .order-title {
             width: 120rpx;
             font-weight: 700;
             font-size: 46rpx;
-            color: #222;
+            color: #0f172a;
             line-height: 1.2;
             padding-left: 10rpx;
-            border-right: 1px solid #efefef;
+            border-right: 1px solid #edf2fa;
         }
 
         .order-status-list {
@@ -339,13 +346,15 @@ onShow(() => {
                     align-items: center;
                     justify-content: center;
                     margin-bottom: 10rpx;
-                    border: 1px solid #cfcfcf;
+                    border: 1px solid #d8e4fb;
+                    background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
                     border-radius: 50%;
+                    box-shadow: 0 4rpx 12rpx rgba(37, 99, 235, 0.12);
                 }
 
                 .status-text {
-                    font-size: 30rpx;
-                    color: #222;
+                    font-size: 28rpx;
+                    color: #334155;
                 }
             }
         }
@@ -353,17 +362,19 @@ onShow(() => {
 
     .menu-list {
         background: #fff;
-        border-radius: 16rpx;
+        border-radius: 20rpx;
         margin-top: 20rpx;
         overflow: hidden;
+        border: 1px solid #e7edf6;
+        box-shadow: 0 8rpx 22rpx rgba(15, 23, 42, 0.05);
 
         .menu-item {
-            min-height: 88rpx;
+            min-height: 96rpx;
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 24rpx;
-            border-bottom: 1px solid #f2f2f2;
+            border-bottom: 1px solid #eef3fb;
 
             &:last-child {
                 border-bottom: none;
@@ -376,18 +387,19 @@ onShow(() => {
             }
 
             .menu-icon {
-                width: 38rpx;
-                height: 38rpx;
-                border-radius: 50%;
-                border: 1px solid #d9d9d9;
+                width: 52rpx;
+                height: 52rpx;
+                border-radius: 14rpx;
+                border: 1px solid #d8e4fb;
+                background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
                 display: flex;
                 align-items: center;
                 justify-content: center;
             }
 
             .menu-text {
-                font-size: 34rpx;
-                color: #222;
+                font-size: 32rpx;
+                color: #0f172a;
             }
         }
     }

@@ -17,19 +17,42 @@ export interface MiniOrderPayload {
 	nums: number
 	phone: string
 	type: 1 | 2
-	way: string
+	way: 1 | 2 | 3
 	tracking_number?: string
 	express_company?: string
 	remark?: string
 	remark_images?: string[]
 	status?: 1 | 2 | 3
+	inbound_status?: 10 | 20
+	settlement_status?: 10 | 20 | 30 | 40 | 50
 }
 
 export const createOrder = (data: MiniOrderPayload) => {
-	return post('/v1/orders', data)
+	const normalizedPayload: MiniOrderPayload = {
+		...data,
+		nums: Number(data.nums) as number,
+		type: Number(data.type) as 1 | 2,
+		way: Number(data.way) as 1 | 2 | 3,
+		status: data.status === undefined ? undefined : (Number(data.status) as 1 | 2 | 3),
+		remark_images: Array.isArray(data.remark_images)
+			? data.remark_images.map((item) => String(item)).filter((item) => !!item)
+			: [],
+	}
+	return post('/v1/orders', normalizedPayload, {
+		headers: {
+			'Content-Type': 'application/json',
+		},
+	})
 }
 
-export const getOrderList = (params: { page: number; pageSize: number; status?: 1 | 2 | 3 }) => {
+export const getOrderList = (params: {
+	page: number
+	pageSize: number
+	status?: 1 | 2 | 3
+	inbound_status?: 10 | 20
+	settlement_status?: 10 | 20 | 30 | 40 | 50
+	keyword?: string
+}) => {
 	return get<{ list?: any[]; data?: any[]; total?: number }>('/v1/orders', params)
 }
 
@@ -160,6 +183,14 @@ export const getMiniDefaultAddress = () => {
 
 export const getMiniTypeBrands = (params?: { ptypeId?: number }) => {
 	return get<MiniTypeBrandsResponse>('/v1/mini/type-brands', params)
+}
+
+export const getMiniPolicy = (type: 'agreement' | 'privacy') => {
+	return get<{ type: string; title: string; content: string; updatedAt?: string | null }>('/v1/mini/policy', { type })
+}
+
+export const getMiniSiteConfig = () => {
+	return get<{ servicePhone: string; contactWechat: string; updatedAt?: string | null }>('/v1/mini/site-config')
 }
 
 export const updateUser = (id: number, data: any) => {

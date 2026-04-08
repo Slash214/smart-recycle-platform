@@ -96,6 +96,20 @@ export const ConfigList = () => {
             return value.length > 30 ? `${value.substring(0, 30)}...` : value;
           }}
         />
+
+        <Table.Column
+          dataIndex="userAgreement"
+          title={"用户协议"}
+          width={120}
+          render={(value: string) => (value ? <Tag color="blue">已配置</Tag> : <Tag>未配置</Tag>)}
+        />
+
+        <Table.Column
+          dataIndex="privacyPolicy"
+          title={"隐私政策"}
+          width={120}
+          render={(value: string) => (value ? <Tag color="purple">已配置</Tag> : <Tag>未配置</Tag>)}
+        />
         
         <Table.Column
           dataIndex="createdAt"

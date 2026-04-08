@@ -1,5 +1,5 @@
 const axios = require('axios')
-const { User, Banner, Ptype, Brand, Address, Details } = require('../../../db/models')
+const { User, Banner, Ptype, Brand, Address, Details, Config } = require('../../../db/models')
 const { Wechat } = require('../../../conf/wechat')
 const typeBrandsCache = new Map()
 
@@ -170,6 +170,49 @@ async function getMiniBrandDetailImages(brandId) {
     }
 }
 
+async function getMiniPolicy(type) {
+    const key = type === 'privacy' ? 'privacyPolicy' : 'userAgreement'
+    const config = await Config.findOne({
+        where: { status: 1 },
+        order: [['id', 'desc']],
+    })
+    if (!config) {
+        return {
+            type,
+            title: type === 'privacy' ? '隐私政策' : '用户协议',
+            content: '',
+            updatedAt: null,
+        }
+    }
+    const data = config.toJSON ? config.toJSON() : config
+    return {
+        type,
+        title: type === 'privacy' ? '隐私政策' : '用户协议',
+        content: data[key] || '',
+        updatedAt: data.updatedAt || null,
+    }
+}
+
+async function getMiniSiteConfig() {
+    const config = await Config.findOne({
+        where: { status: 1 },
+        order: [['id', 'desc']],
+    })
+    if (!config) {
+        return {
+            servicePhone: '',
+            contactWechat: '',
+            updatedAt: null,
+        }
+    }
+    const data = config.toJSON ? config.toJSON() : config
+    return {
+        servicePhone: data.servicePhone || '',
+        contactWechat: data.contactWechat || '',
+        updatedAt: data.updatedAt || null,
+    }
+}
+
 module.exports = {
     exchangeWechatCode,
     getOrCreateMiniUser,
@@ -178,4 +221,6 @@ module.exports = {
     getMiniDefaultAddress,
     listTypeWithBrandsForMini,
     getMiniBrandDetailImages,
+    getMiniPolicy,
+    getMiniSiteConfig,
 }

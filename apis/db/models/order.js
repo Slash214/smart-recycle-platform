@@ -35,8 +35,8 @@ const Order = seq.define('order', {
 	},
 	way: {
 		type: TINYINT,
-		defaultValue: 0,
-		comment: '1 表示自己寄 2 表示快递上门  0 空不是不是物流发货'
+		defaultValue: 1,
+		comment: '收款方式：1微信 2支付宝 3银行卡'
 	},
 	userid: {
 		type: STRING,
@@ -68,6 +68,16 @@ const Order = seq.define('order', {
 		type: INTEGER,
 		defaultValue: 1,
 		comment: '订单状态：1待确认 2进行中 3已完成 0已删除'
+	},
+	inbound_status: {
+		type: TINYINT,
+		defaultValue: 10,
+		comment: '入库状态：10待入库 20已入库'
+	},
+	settlement_status: {
+		type: TINYINT,
+		defaultValue: 10,
+		comment: '结算状态：10待报价 20已报价 30待结算 40已结算 50退货中 0已删除'
 	},
 })
 

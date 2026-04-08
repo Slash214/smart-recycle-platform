@@ -188,14 +188,34 @@
 
 ---
 
+## 6.1 协议内容（设置页）
+
+### 接口
+- `GET /mini/policy?type=agreement`
+- `GET /mini/policy?type=privacy`
+- 鉴权: 否
+
+### 参数
+- `type`：`agreement` 用户协议 / `privacy` 隐私政策
+
+### 返回
+- `type`
+- `title`
+- `content`（富文本 HTML）
+- `updatedAt`
+
+---
+
 ## 7. 小程序订单接口
 
 > 需要登录后访问，Header: `Authorization: Bearer <token>`
 
-状态定义:
-- `1`: 待确认
-- `2`: 进行中
-- `3`: 已完成
+状态定义（新）:
+- `inbound_status`: `10待入库 20已入库`
+- `settlement_status`: `10待报价 20已报价 30待结算 40已结算 50退货中`
+
+兼容状态（旧）:
+- `status`: `1待确认 2进行中 3已完成`
 
 ### 7.1 创建订单
 - `POST /orders`
@@ -208,7 +228,7 @@
   "price": "100",
   "phone": "153289842222",
   "type": 2,
-  "way": 2,
+  "way": 1,
   "areas": "深圳市南山区",
   "hourse_number": "xx大厦1楼",
   "tracking_number": "SF123456789",
@@ -226,7 +246,7 @@
 - `userid` 后端自动从 token 获取
 
 ### 7.2 我的订单列表
-- `GET /orders?page=1&pageSize=20&status=1`
+- `GET /orders?page=1&pageSize=20&inbound_status=10&settlement_status=10`
 - 仅返回当前登录用户订单
 
 ### 7.3 订单详情

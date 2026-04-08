@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { onLaunch, onShow, onHide, onShareAppMessage } from '@dcloudio/uni-app'
 import { setStorage } from '@/utils/StorageUtils'
-import { USER_KEY, TOKEN_KEY, BRAND_NAME } from '@/constant'
-import { silentLogin } from '@/apis'
+import { USER_KEY, TOKEN_KEY, BRAND_NAME, SITE_CONFIG_KEY } from '@/constant'
+import { silentLogin, getMiniSiteConfig } from '@/apis'
 
 onLaunch(() => {
+    getMiniSiteConfig()
+        .then((config) => {
+            setStorage(SITE_CONFIG_KEY, config)
+        })
+        .catch(() => {
+            // 忽略配置拉取错误，页面使用默认值兜底
+        })
+
     uni.login({
         success: async (res) => {
             if (!res.code) {
@@ -36,7 +44,13 @@ onShareAppMessage(() => {
 })
 
 onShow(() => {
-    console.log('App Show')
+    getMiniSiteConfig()
+        .then((config) => {
+            setStorage(SITE_CONFIG_KEY, config)
+        })
+        .catch(() => {
+            // 忽略配置拉取错误，页面使用缓存兜底
+        })
 })
 onHide(() => {
     console.log('App Hide')

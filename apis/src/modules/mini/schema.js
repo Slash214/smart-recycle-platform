@@ -56,4 +56,18 @@ module.exports = {
             },
         },
     },
+    policySchema: {
+        tags: ['mini'],
+        summary: '小程序获取用户协议/隐私政策',
+        querystring: {
+            type: 'object',
+            properties: {
+                type: { type: 'string', enum: ['agreement', 'privacy'], default: 'agreement' },
+            },
+        },
+    },
+    siteConfigSchema: {
+        tags: ['mini'],
+        summary: '小程序获取全局站点配置（客服电话/微信）',
+    },
 }

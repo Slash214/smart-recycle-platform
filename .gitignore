@@ -1,0 +1,48 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# build outputs
+dist/
+build/
+**/dist/
+**/build/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# env files
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# mini program common outputs (按你项目实际再加)
+miniprogram_npm/
+project.private.config.json
+
+# framework/cache
+.cache/
+.turbo/
+.next/
+.nuxt/
+coverage/
+temp/
+tmp/
+*.tmp
+
+# package manager store/cache (optional)
+.pnpm-store/
+
+# archives
+*.zip
+*.rar
+*.7z

@@ -36,9 +36,7 @@ export interface MiniOrderPayload {
 	/** 回收明细（与 nums 一致时由服务端落库 order_devices） */
 	devices?: MiniOrderDeviceLine[]
 	remark_images?: string[]
-	status?: 1 | 2 | 3
-	inbound_status?: 10 | 20
-	settlement_status?: 10 | 20 | 30 | 40 | 50
+	status?: 10 | 20 | 30 | 40 | 50 | 60
 }
 
 export const createOrder = (data: MiniOrderPayload) => {
@@ -47,7 +45,7 @@ export const createOrder = (data: MiniOrderPayload) => {
 		nums: Number(data.nums) as number,
 		type: Number(data.type) as 1 | 2,
 		way: Number(data.way) as 1 | 2 | 3,
-		status: data.status === undefined ? undefined : (Number(data.status) as 1 | 2 | 3),
+		status: data.status === undefined ? undefined : (Number(data.status) as 10 | 20 | 30 | 40 | 50 | 60),
 		devices: Array.isArray(data.devices) ? data.devices : undefined,
 		remark_images: Array.isArray(data.remark_images)
 			? data.remark_images.map((item) => String(item)).filter((item) => !!item)
@@ -63,9 +61,7 @@ export const createOrder = (data: MiniOrderPayload) => {
 export const getOrderList = (params: {
 	page: number
 	pageSize: number
-	status?: 1 | 2 | 3
-	inbound_status?: 10 | 20
-	settlement_status?: 10 | 20 | 30 | 40 | 50
+	status?: 10 | 20 | 30 | 40 | 50 | 60
 	keyword?: string
 }) => {
 	return get<{ list?: any[]; data?: any[]; total?: number }>('/v1/orders', params)
@@ -77,25 +73,6 @@ export const getOrderDetail = (id: number) => {
 
 export const updateOrder = (id: number, data: Partial<MiniOrderPayload>) => {
 	return put(`/v1/orders/${id}`, data)
-}
-
-export interface MiniOrderReturnItem {
-	id: number
-	order_id: number
-	userid: string
-	reason: string
-	status: 10 | 20 | 30
-	reject_reason?: string
-	audit_at?: string
-	createdAt?: string
-}
-
-export const applyOrderReturn = (id: number, data: { reason: string }) => {
-	return post<MiniOrderReturnItem>(`/v1/orders/${id}/return-apply`, data)
-}
-
-export const getOrderReturnLatest = (id: number) => {
-	return get<MiniOrderReturnItem | null>(`/v1/orders/${id}/return-latest`)
 }
 
 export const uploadImageFile = async (filePath: string) => {

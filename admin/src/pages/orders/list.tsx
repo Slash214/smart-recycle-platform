@@ -8,34 +8,32 @@ import {
   useTable,
 } from "@refinedev/antd";
 import { type BaseRecord, useUpdate } from "@refinedev/core";
-import { Space, Table, Tag, Select, Button, Input, DatePicker, message, Modal, Form, InputNumber, Typography } from "antd";
+import { Space, Table, Tag, Select, Button, Input, DatePicker, message, Modal, Form, InputNumber, Typography, Tooltip, Divider } from "antd";
 import React from "react";
 import type { Dayjs } from "dayjs";
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
 
-const INBOUND_OPTIONS = [
-  { label: "待入库", value: 10 },
-  { label: "已入库", value: 20 },
-];
-
-const SETTLEMENT_OPTIONS = [
-  { label: "待报价", value: 10 },
-  { label: "已报价", value: 20 },
-  { label: "待结算", value: 30 },
-  { label: "已结算", value: 40 },
-  { label: "退货中", value: 50 },
+const STATUS_OPTIONS = [
+  { label: "已下单", value: 10 },
+  { label: "已签收", value: 20 },
+  { label: "已报价", value: 30 },
+  { label: "已确认", value: 40 },
+  { label: "已返款", value: 50 },
+  { label: "已完成", value: 60 },
 ];
 
 export const OrderList = () => {
-  const [inboundStatus, setInboundStatus] = React.useState<number | undefined>(undefined);
-  const [settlementStatus, setSettlementStatus] = React.useState<number | undefined>(undefined);
+  const [status, setStatus] = React.useState<number | undefined>(undefined);
   const [keyword, setKeyword] = React.useState<string>("");
   const [range, setRange] = React.useState<[Dayjs, Dayjs] | null>(null);
   const [statusUpdatingKey, setStatusUpdatingKey] = React.useState<string | null>(null);
   const [quoteModalOpen, setQuoteModalOpen] = React.useState(false);
   const [pendingQuoteTarget, setPendingQuoteTarget] = React.useState<{ record: BaseRecord; nextStatus: number } | null>(null);
-  const [quoteForm] = Form.useForm<{ price: number }>();
+  const [quoteForm] = Form.useForm<{
+    price?: number;
+    devices?: Array<{ model: string; memory: string; unit: string; qty: number; price?: number }>;
+  }>();
 
   const { mutate: updateOrder } = useUpdate();
 
@@ -43,16 +41,14 @@ export const OrderList = () => {
     syncWithLocation: true,
     filters: {
       permanent: [
-        ...(typeof inboundStatus === "number" ? [{ field: "inbound_status", operator: "eq" as const, value: inboundStatus }] : []),
-        ...(typeof settlementStatus === "number" ? [{ field: "settlement_status", operator: "eq" as const, value: settlementStatus }] : []),
+        ...(typeof status === "number" ? [{ field: "status", operator: "eq" as const, value: status }] : []),
       ],
     },
   });
 
   const applyFilters = () => {
     const next = [
-      ...(typeof inboundStatus === "number" ? [{ field: "inbound_status", operator: "eq" as const, value: inboundStatus }] : []),
-      ...(typeof settlementStatus === "number" ? [{ field: "settlement_status", operator: "eq" as const, value: settlementStatus }] : []),
+      ...(typeof status === "number" ? [{ field: "status", operator: "eq" as const, value: status }] : []),
       ...(keyword ? [{ field: "keyword", operator: "contains" as const, value: keyword }] : []),
       ...(range ? [{ field: "startAt", operator: "gte" as const, value: range[0].startOf("day").toISOString() }] : []),
       ...(range ? [{ field: "endAt", operator: "lte" as const, value: range[1].endOf("day").toISOString() }] : []),
@@ -62,7 +58,7 @@ export const OrderList = () => {
 
   const patchOrderStatus = (
     record: BaseRecord,
-    field: "inbound_status" | "settlement_status",
+    field: "status",
     value: number,
     extraValues?: Record<string, unknown>,
     onDone?: () => void
@@ -77,7 +73,7 @@ export const OrderList = () => {
       },
       {
         onSuccess: () => {
-          message.success(field === "inbound_status" ? "入库状态已更新" : "结算状态已更新");
+          message.success("订单状态已更新");
           onDone?.();
         },
         onError: (err) => {
@@ -90,8 +86,31 @@ export const OrderList = () => {
 
   const openQuoteModal = (record: BaseRecord, nextStatus: number) => {
     const currentPrice = Number(record.price);
+    const currentDevices = Array.isArray(record.devices)
+      ? (record.devices as Array<{ model?: string; memory?: string; unit?: string; qty?: number; price?: string | number | null }>)
+      : [];
+    const normalizedDevices = currentDevices.map((d) => {
+      const unit = d.unit === "board" ? "board" : "whole";
+      const priceNum = Number(d.price);
+      return {
+        model: String(d.model || ""),
+        memory: String(d.memory || ""),
+        unit,
+        qty: Number(d.qty || 0),
+        price: Number.isFinite(priceNum) ? priceNum : undefined,
+      };
+    });
+
+    const autoTotal = normalizedDevices.reduce((sum, d) => {
+      const p = Number(d.price);
+      const q = Number(d.qty || 0);
+      if (!Number.isFinite(p) || q <= 0) return sum;
+      return sum + p * q;
+    }, 0);
+
     quoteForm.setFieldsValue({
-      price: Number.isFinite(currentPrice) ? currentPrice : undefined,
+      devices: normalizedDevices,
+      price: Number.isFinite(currentPrice) ? currentPrice : autoTotal || undefined,
     });
     setPendingQuoteTarget({ record, nextStatus });
     setQuoteModalOpen(true);
@@ -106,14 +125,45 @@ export const OrderList = () => {
   const submitQuoteAndStatus = async () => {
     const values = await quoteForm.validateFields();
     if (!pendingQuoteTarget) return;
+    const submittedDevices = Array.isArray(values.devices) ? values.devices : [];
+    const hasDevices = submittedDevices.length > 0;
+    const normalizedDevices = submittedDevices.map((d) => ({
+      model: String(d.model || "").trim(),
+      memory: String(d.memory || "").trim(),
+      unit: d.unit === "board" ? "board" : "whole",
+      qty: Number(d.qty || 0),
+      price: d.price === undefined || d.price === null ? null : String(d.price),
+    }));
+    if (hasDevices) {
+      const missingIndex = normalizedDevices.findIndex((d) => !d.price || String(d.price).trim() === "");
+      if (missingIndex >= 0) {
+        message.warning(`请填写第 ${missingIndex + 1} 条回收明细单价`);
+        return;
+      }
+    }
+
     patchOrderStatus(
       pendingQuoteTarget.record,
-      "settlement_status",
+      "status",
       pendingQuoteTarget.nextStatus,
-      { price: String(values.price) },
+      {
+        price: String(values.price),
+        ...(hasDevices ? { devices: normalizedDevices } : {}),
+      },
       closeQuoteModal
     );
   };
+
+  const watchedDevices = Form.useWatch("devices", quoteForm) as Array<{ qty?: number; price?: number }> | undefined;
+  const autoSumPrice = React.useMemo(() => {
+    if (!Array.isArray(watchedDevices) || watchedDevices.length === 0) return 0;
+    return watchedDevices.reduce((sum, d) => {
+      const qty = Number(d?.qty || 0);
+      const price = Number(d?.price);
+      if (!Number.isFinite(price) || qty <= 0) return sum;
+      return sum + qty * price;
+    }, 0);
+  }, [watchedDevices]);
 
   const getTypeTag = (method: number) => {
     switch (method) {
@@ -139,6 +189,44 @@ export const OrderList = () => {
     }
   };
 
+  const renderDeviceText = (record: BaseRecord) => {
+    const devices = record.devices as Array<{ model?: string; memory?: string; unit?: string; qty?: number; price?: string | null }> | undefined;
+    if (!devices || !devices.length) return <Text type="secondary">-</Text>;
+
+    const fullText = devices
+      .map((d) => {
+        const unitText = d.unit === "board" ? "单板" : "整机";
+        const priceText = d.price && String(d.price).trim() ? `，单价:${d.price}` : "";
+        return `${d.model || "-"} ${d.memory || "-"} ${unitText}×${d.qty ?? 0}${priceText}`;
+      })
+      .join("；");
+
+    const preview = devices
+      .slice(0, 2)
+      .map((d) => `${d.model || "-"} ${d.memory || "-"}×${d.qty ?? 0}`)
+      .join("；");
+    const suffix = devices.length > 2 ? ` 等${devices.length}项` : "";
+
+    return (
+      <Tooltip title={fullText} placement="topLeft">
+        <span
+          style={{
+            display: "inline-block",
+            maxWidth: 340,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            fontSize: 12,
+            cursor: "help",
+          }}
+        >
+          {preview}
+          {suffix}
+        </span>
+      </Tooltip>
+    );
+  };
+
   return (
     <List
       createButtonProps={{
@@ -148,28 +236,11 @@ export const OrderList = () => {
         <>
           <Select
             style={{ width: 130 }}
-            placeholder="入库状态"
+            placeholder="订单状态"
             allowClear
-            value={inboundStatus}
-            onChange={setInboundStatus}
-            options={[
-              { label: "待入库", value: 10 },
-              { label: "已入库", value: 20 },
-            ]}
-          />
-          <Select
-            style={{ width: 130 }}
-            placeholder="结算状态"
-            allowClear
-            value={settlementStatus}
-            onChange={setSettlementStatus}
-            options={[
-              { label: "待报价", value: 10 },
-              { label: "已报价", value: 20 },
-              { label: "待结算", value: 30 },
-              { label: "已结算", value: 40 },
-              { label: "退货中", value: 50 },
-            ]}
+            value={status}
+            onChange={setStatus}
+            options={STATUS_OPTIONS}
           />
           <Button onClick={applyFilters}>筛选</Button>
           <Input
@@ -188,7 +259,7 @@ export const OrderList = () => {
         </>
       )}
     >
-      <Table {...tableProps} rowKey="id">
+      <Table {...tableProps} rowKey="id" size="middle" tableLayout="fixed" scroll={{ x: 1650 }}>
         <Table.Column dataIndex="id" title={"ID"} width={80} />
         
         <Table.Column
@@ -202,20 +273,9 @@ export const OrderList = () => {
 
         <Table.Column
           title={"回收明细"}
-          width={240}
+          width={360}
           ellipsis
-          render={(_: unknown, record: BaseRecord) => {
-            const devices = record.devices as Array<{ model?: string; memory?: string; unit?: string; qty?: number }> | undefined;
-            if (!devices || !devices.length) return <Text type="secondary">-</Text>;
-            const text = devices
-              .map((d) => `${d.model || "-"} ${d.memory || "-"} ${d.unit === "board" ? "单板" : "整机"}×${d.qty ?? 0}`)
-              .join("；");
-            return (
-              <span title={text} style={{ fontSize: 12 }}>
-                {text}
-              </span>
-            );
-          }}
+          render={(_: unknown, record: BaseRecord) => renderDeviceText(record)}
         />
 
         <Table.Column
@@ -246,7 +306,7 @@ export const OrderList = () => {
 
         <Table.Column
           title={"收款信息"}
-          width={180}
+          width={210}
           ellipsis
           render={(_: unknown, record: BaseRecord) => {
             const way = Number(record.way || 1);
@@ -256,7 +316,22 @@ export const OrderList = () => {
             if (way === 3) {
               text = [record.payee_name, record.bank_name, record.bank_card_no].filter(Boolean).join(" / ") || "-";
             }
-            return <span title={text}>{text}</span>;
+            return (
+              <Tooltip title={text} placement="topLeft">
+                <span
+                  style={{
+                    display: "inline-block",
+                    maxWidth: 190,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    cursor: "help",
+                  }}
+                >
+                  {text}
+                </span>
+              </Tooltip>
+            );
           }}
         />
         
@@ -275,40 +350,23 @@ export const OrderList = () => {
         />
         
         <Table.Column
-          dataIndex="inbound_status"
-          title={"入库状态"}
+          dataIndex="status"
+          title={"订单状态"}
           width={130}
           render={(value: number, record: BaseRecord) => (
             <Select
               size="small"
               style={{ minWidth: 108 }}
               value={value}
-              options={INBOUND_OPTIONS}
-              loading={statusUpdatingKey === `${record.id}-inbound_status`}
-              disabled={statusUpdatingKey === `${record.id}-inbound_status`}
-              onChange={(v) => patchOrderStatus(record, "inbound_status", v)}
-            />
-          )}
-        />
-
-        <Table.Column
-          dataIndex="settlement_status"
-          title={"结算状态"}
-          width={130}
-          render={(value: number, record: BaseRecord) => (
-            <Select
-              size="small"
-              style={{ minWidth: 108 }}
-              value={value}
-              options={SETTLEMENT_OPTIONS}
-              loading={statusUpdatingKey === `${record.id}-settlement_status`}
-              disabled={statusUpdatingKey === `${record.id}-settlement_status`}
+              options={STATUS_OPTIONS}
+              loading={statusUpdatingKey === `${record.id}-status`}
+              disabled={statusUpdatingKey === `${record.id}-status`}
               onChange={(v) => {
-                if (v >= 20) {
+                if (v >= 30) {
                   openQuoteModal(record, v);
                   return;
                 }
-                patchOrderStatus(record, "settlement_status", v);
+                patchOrderStatus(record, "status", v);
               }}
             />
           )}
@@ -345,13 +403,49 @@ export const OrderList = () => {
         onCancel={closeQuoteModal}
         okText="确认更新"
         cancelText="取消"
-        confirmLoading={statusUpdatingKey === `${pendingQuoteTarget?.record?.id}-settlement_status`}
+        confirmLoading={statusUpdatingKey === `${pendingQuoteTarget?.record?.id}-status`}
         destroyOnClose
       >
         <Form form={quoteForm} layout="vertical">
           <Form.Item label="订单数量">
             <Text>{pendingQuoteTarget?.record?.nums || 0} 件</Text>
           </Form.Item>
+          <Divider style={{ margin: "10px 0 14px" }} />
+          <Text type="secondary">按每条回收明细填写单价，系统自动汇总；总价可手动调整。</Text>
+          <Form.List name="devices">
+            {(fields) => (
+              <div style={{ marginTop: 10 }}>
+                {fields.map(({ key, name }) => {
+                  const row = quoteForm.getFieldValue(["devices", name]) || {};
+                  const qty = Number(row.qty || 0);
+                  const rowPrice = Number(row.price);
+                  const subtotal = Number.isFinite(rowPrice) && qty > 0 ? (rowPrice * qty).toFixed(2) : "--";
+                  return (
+                    <div key={key} style={{ border: "1px solid #f0f0f0", borderRadius: 8, padding: 10, marginBottom: 8 }}>
+                      <div style={{ fontSize: 12, marginBottom: 8 }}>
+                        {row.model || "-"} / {row.memory || "-"} / {row.unit === "board" ? "单板" : "整机"} ×{qty}
+                      </div>
+                      <Space align="center" wrap>
+                        <Form.Item name={[name, "model"]} hidden><Input /></Form.Item>
+                        <Form.Item name={[name, "memory"]} hidden><Input /></Form.Item>
+                        <Form.Item name={[name, "unit"]} hidden><Input /></Form.Item>
+                        <Form.Item name={[name, "qty"]} hidden><InputNumber /></Form.Item>
+                        <Form.Item
+                          label="单价"
+                          name={[name, "price"]}
+                          rules={[{ required: true, message: "必填" }, { type: "number", min: 0, message: ">=0" }]}
+                          style={{ marginBottom: 0 }}
+                        >
+                          <InputNumber min={0} precision={2} placeholder="单价" />
+                        </Form.Item>
+                        <Text type="secondary">小计：{subtotal}</Text>
+                      </Space>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Form.List>
           <Form.Item
             label="结算总价"
             name="price"
@@ -359,6 +453,7 @@ export const OrderList = () => {
               { required: true, message: "请输入结算总价" },
               { type: "number", min: 0, message: "价格不能小于 0" },
             ]}
+            extra={`自动汇总：${autoSumPrice.toFixed(2)}（可手动修改）`}
           >
             <InputNumber
               style={{ width: "100%" }}
@@ -368,7 +463,7 @@ export const OrderList = () => {
             />
           </Form.Item>
           <Text type="secondary">
-            当前按订单「结算总价」填写；回收明细已单独落库，便于核对件数与机型。
+            订单进入“已报价”及后续状态时，将使用你设置的单项价格与总价。
           </Text>
         </Form>
       </Modal>

@@ -154,14 +154,6 @@ export const zhCN = {
       show: "订单详情",
     },
   },
-  // 退货审核
-  "order-returns": {
-    "order-returns": "退货审核",
-    titles: {
-      list: "退货审核列表",
-      show: "退货审核详情",
-    },
-  },
   // 系统配置
   configs: {
     configs: "系统配置",

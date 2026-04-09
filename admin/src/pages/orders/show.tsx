@@ -11,12 +11,20 @@ export const OrderShow = () => {
 
   const record = data?.data;
 
-  const getInboundStatusTag = (status: number) => {
+  const getOrderStatusTag = (status: number) => {
     switch (status) {
       case 10:
-        return <Tag color="gold">待入库</Tag>;
+        return <Tag color="gold">已下单</Tag>;
       case 20:
-        return <Tag color="blue">已入库</Tag>;
+        return <Tag color="blue">已签收</Tag>;
+      case 30:
+        return <Tag color="cyan">已报价</Tag>;
+      case 40:
+        return <Tag color="orange">已确认</Tag>;
+      case 50:
+        return <Tag color="green">已返款</Tag>;
+      case 60:
+        return <Tag color="purple">已完成</Tag>;
       default:
         return <Tag color="default">未知</Tag>;
     }
@@ -28,23 +36,6 @@ export const OrderShow = () => {
         return <Tag color="blue">上门</Tag>;
       case 2:
         return <Tag color="green">邮寄</Tag>;
-      default:
-        return <Tag color="default">未知</Tag>;
-    }
-  };
-
-  const getSettlementStatusTag = (status: number) => {
-    switch (status) {
-      case 10:
-        return <Tag color="gold">待报价</Tag>;
-      case 20:
-        return <Tag color="cyan">已报价</Tag>;
-      case 30:
-        return <Tag color="orange">待结算</Tag>;
-      case 40:
-        return <Tag color="green">已结算</Tag>;
-      case 50:
-        return <Tag color="red">退货中</Tag>;
       default:
         return <Tag color="default">未知</Tag>;
     }
@@ -96,11 +87,8 @@ export const OrderShow = () => {
               ? "--"
               : String(record?.price)}
           </Descriptions.Item>
-          <Descriptions.Item label="入库状态">
-            {record?.inbound_status !== undefined ? getInboundStatusTag(record.inbound_status) : "-"}
-          </Descriptions.Item>
-          <Descriptions.Item label="结算状态">
-            {record?.settlement_status !== undefined ? getSettlementStatusTag(record.settlement_status) : "-"}
+          <Descriptions.Item label="订单状态">
+            {record?.status !== undefined ? getOrderStatusTag(record.status) : "-"}
           </Descriptions.Item>
           <Descriptions.Item label="创建时间">
             <DateField value={record?.createdAt} format="YYYY年MM月DD日 HH:mm:ss" />
@@ -129,6 +117,7 @@ export const OrderShow = () => {
                 render: (v: string) => (v === "board" ? "单板" : "整机"),
               },
               { title: "数量", dataIndex: "qty", width: 90 },
+              { title: "单项价格", dataIndex: "price", width: 120, render: (v: string | null) => (v && String(v).trim() ? String(v) : "--") },
             ]}
           />
         ) : (

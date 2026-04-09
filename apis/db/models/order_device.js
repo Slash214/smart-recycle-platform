@@ -34,6 +34,12 @@ const OrderDevice = seq.define(
             defaultValue: 0,
             comment: '数量',
         },
+        price: {
+            type: STRING(50),
+            allowNull: true,
+            defaultValue: null,
+            comment: '该型号配置单独价格（可空，报价后填写）',
+        },
         sort_order: {
             type: INTEGER,
             allowNull: false,

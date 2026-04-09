@@ -10,9 +10,7 @@ module.exports = {
                 userid: { type: 'string' },
                 type: { type: 'integer', description: '1上门 2邮寄' },
                 way: { type: 'integer', enum: [1, 2, 3], description: '收款方式：1微信 2支付宝 3银行卡' },
-                status: { type: 'integer', description: '兼容旧状态：1待确认 2进行中 3已完成' },
-                inbound_status: { type: 'integer', enum: [10, 20], description: '入库状态：10待入库 20已入库' },
-                settlement_status: { type: 'integer', enum: [10, 20, 30, 40, 50], description: '结算状态：10待报价 20已报价 30待结算 40已结算 50退货中' },
+                status: { type: 'integer', enum: [10, 20, 30, 40, 50, 60], description: '订单状态：10已下单 20已签收 30已报价 40已确认 50已返款 60已完成' },
                 keyword: { type: 'string', description: '手机号/单号/快递公司/备注 关键词' },
                 startAt: { type: 'string', description: '创建时间开始（ISO）' },
                 endAt: { type: 'string', description: '创建时间结束（ISO）' },
@@ -54,8 +52,7 @@ module.exports = {
                 express_company: { type: 'string', description: '快递公司名称（字符串）' },
                 areas: { type: 'string' },
                 hourse_number: { type: 'string' },
-                inbound_status: { type: 'integer', enum: [10, 20], description: '入库状态：10待入库 20已入库' },
-                settlement_status: { type: 'integer', enum: [10, 20, 30, 40, 50], description: '结算状态：10待报价 20已报价 30待结算 40已结算 50退货中' },
+                status: { type: 'integer', enum: [10, 20, 30, 40, 50, 60], description: '订单状态：10已下单 20已签收 30已报价 40已确认 50已返款 60已完成' },
                 remark_images: {
                     oneOf: [
                         { type: 'array', items: { type: 'string' } },
@@ -76,6 +73,7 @@ module.exports = {
                             memory: { type: 'string' },
                             unit: { type: 'string', enum: ['whole', 'board'] },
                             qty: { type: 'integer', minimum: 1 },
+                            price: { type: ['string', 'null'], description: '该型号单独价格（可空）' },
                         },
                     },
                 },
@@ -111,8 +109,7 @@ module.exports = {
                 express_company: { type: 'string' },
                 areas: { type: 'string' },
                 hourse_number: { type: 'string' },
-                inbound_status: { type: 'integer', enum: [10, 20], description: '入库状态：10待入库 20已入库' },
-                settlement_status: { type: 'integer', enum: [10, 20, 30, 40, 50], description: '结算状态：10待报价 20已报价 30待结算 40已结算 50退货中' },
+                status: { type: 'integer', enum: [10, 20, 30, 40, 50, 60], description: '订单状态：10已下单 20已签收 30已报价 40已确认 50已返款 60已完成' },
                 remark_images: {
                     oneOf: [
                         { type: 'array', items: { type: 'string' } },
@@ -132,6 +129,7 @@ module.exports = {
                             memory: { type: 'string' },
                             unit: { type: 'string', enum: ['whole', 'board'] },
                             qty: { type: 'integer', minimum: 1 },
+                            price: { type: ['string', 'null'], description: '该型号单独价格（可空）' },
                         },
                     },
                 },
@@ -146,61 +144,6 @@ module.exports = {
             required: ['id'],
             properties: {
                 id: { type: 'integer' },
-            },
-        },
-    },
-    applyReturnSchema: {
-        tags: ['order'],
-        summary: '用户申请退货',
-        params: {
-            type: 'object',
-            required: ['id'],
-            properties: { id: { type: 'integer' } },
-        },
-        body: {
-            type: 'object',
-            required: ['reason'],
-            properties: {
-                reason: { type: 'string', minLength: 2, maxLength: 500 },
-            },
-        },
-    },
-    latestReturnSchema: {
-        tags: ['order'],
-        summary: '获取订单最新退货申请',
-        params: {
-            type: 'object',
-            required: ['id'],
-            properties: { id: { type: 'integer' } },
-        },
-    },
-    listReturnsSchema: {
-        tags: ['order'],
-        summary: '管理端退货申请列表',
-        querystring: {
-            type: 'object',
-            properties: {
-                page: { type: 'integer', default: 1 },
-                pageSize: { type: 'integer', default: 20 },
-                status: { type: 'integer', enum: [10, 20, 30] },
-                keyword: { type: 'string' },
-            },
-        },
-    },
-    auditReturnSchema: {
-        tags: ['order'],
-        summary: '管理端审核退货申请',
-        params: {
-            type: 'object',
-            required: ['id'],
-            properties: { id: { type: 'integer' } },
-        },
-        body: {
-            type: 'object',
-            required: ['action'],
-            properties: {
-                action: { type: 'string', enum: ['approve', 'reject'] },
-                reject_reason: { type: 'string', maxLength: 500 },
             },
         },
     },

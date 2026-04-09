@@ -91,8 +91,8 @@ const Order = seq.define('order', {
 	},
 	status: {
 		type: INTEGER,
-		defaultValue: 1,
-		comment: '订单状态：1待确认 2进行中 3已完成 0已删除'
+		defaultValue: 10,
+		comment: '订单状态：10已下单 20已签收 30已报价 40已确认 50已返款 60已完成 0已删除'
 	},
 	inbound_status: {
 		type: TINYINT,

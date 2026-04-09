@@ -51,6 +51,15 @@
                     <text class="device-title">{{ d.model }} / {{ d.memory }} / {{ d.unit === 'board' ? '单板' : '整机' }}</text>
                     <text class="device-qty">×{{ d.qty }}</text>
                 </view>
+                <view class="device-price-row">
+                    <text class="device-price-label">单价：</text>
+                    <text v-if="d.priceText !== '--'" class="device-price-value">{{ d.priceText }}</text>
+                    <text v-else class="device-price-empty">待报价</text>
+                    <text class="device-price-divider">|</text>
+                    <text class="device-price-label">小计：</text>
+                    <text v-if="d.subtotalText !== '--'" class="device-price-value">{{ d.subtotalText }}</text>
+                    <text v-else class="device-price-empty">--</text>
+                </view>
             </view>
             <view class="price-line">
                 <text class="price-label">结算价格:</text>
@@ -67,14 +76,8 @@
             </view>
         </view>
 
-        <view v-if="returnStatusText" class="card return-tip">
-            <text class="tip-label">退货进度：</text>
-            <text class="tip-text">{{ returnStatusText }}</text>
-        </view>
-
-        <view v-if="canUserConfirm || canApplyReturn" class="fix-bottom">
+        <view v-if="canUserConfirm" class="fix-bottom">
             <view v-if="canUserConfirm" class="confirm-btn" @click="confirmSettlement">确认结算</view>
-            <view v-if="canApplyReturn" :class="['confirm-btn', canUserConfirm ? 'secondary' : '']" @click="goApplyReturn">我要退货</view>
         </view>
     </view>
 </template>
@@ -82,7 +85,7 @@
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getOrderDetail, getMiniDefaultAddress, getOrderReturnLatest, updateOrder } from '@/apis'
+import { getOrderDetail, getMiniDefaultAddress, updateOrder } from '@/apis'
 
 interface OrderDevice {
     id?: number
@@ -90,6 +93,7 @@ interface OrderDevice {
     memory: string
     unit: 'whole' | 'board'
     qty: number
+    price?: string | null
 }
 
 interface OrderDetail {
@@ -107,22 +111,13 @@ interface OrderDetail {
     alipay_account?: string
     bank_name?: string
     bank_card_no?: string
-    inbound_status?: number
-    settlement_status?: number
+    status?: number
     createdAt?: string
     devices?: OrderDevice[]
 }
 
-interface ReturnRequest {
-    id: number
-    status: 10 | 20 | 30
-    reason?: string
-    reject_reason?: string
-}
-
 const order = ref<OrderDetail | null>(null)
 const warehouseFallback = ref('')
-const latestReturn = ref<ReturnRequest | null>(null)
 
 const nums = computed(() => Number(order.value?.nums || 0))
 
@@ -134,13 +129,27 @@ const deviceLines = computed(() => {
         memory: d.memory || '',
         unit: d.unit === 'board' ? 'board' as const : 'whole' as const,
         qty: Number(d.qty) || 0,
+        priceText: d.price === null || d.price === undefined || String(d.price).trim() === '' ? '--' : String(d.price),
+        subtotalText: (() => {
+            const p = Number(d.price)
+            const q = Number(d.qty) || 0
+            if (!Number.isFinite(p) || q <= 0) return '--'
+            return (p * q).toFixed(2)
+        })(),
     }))
 })
 
 const inboundTitle = computed(() => {
-    const ib = order.value?.inbound_status
-    if (ib === 20) return '已入库'
-    return '待入库'
+    const s = order.value?.status
+    const map: Record<number, string> = {
+        10: '已下单',
+        20: '已签收',
+        30: '已报价',
+        40: '已确认',
+        50: '已返款',
+        60: '已完成',
+    }
+    return s ? map[s] || '未知状态' : '未知状态'
 })
 
 const logisticsLine = computed(() => {
@@ -184,24 +193,7 @@ const canUserConfirm = computed(() => {
     const o = order.value
     if (!o) return false
     if (!o.price || String(o.price).trim() === '') return false
-    return o.settlement_status === 20 || o.settlement_status === 30
-})
-
-const canApplyReturn = computed(() => {
-    const o = order.value
-    if (!o) return false
-    if (o.settlement_status !== 40) return false
-    if (latestReturn.value && latestReturn.value.status === 10) return false
-    return true
-})
-
-const returnStatusText = computed(() => {
-    const r = latestReturn.value
-    if (!r) return ''
-    if (r.status === 10) return '退货申请待审核'
-    if (r.status === 20) return '退货申请已同意'
-    if (r.status === 30) return `退货申请已拒绝${r.reject_reason ? `：${r.reject_reason}` : ''}`
-    return ''
+    return o.status === 30
 })
 
 const createdText = computed(() => {
@@ -232,9 +224,8 @@ function normalizeDetail(payload: unknown): OrderDetail | null {
 
 async function load(id: number) {
     try {
-        const [raw, latest] = await Promise.all([getOrderDetail(id), getOrderReturnLatest(id)])
+        const raw = await getOrderDetail(id)
         order.value = normalizeDetail(raw)
-        latestReturn.value = latest || null
         if (!order.value?.areas || !String(order.value.areas).trim()) {
             const addr = await getMiniDefaultAddress()
             if (addr) {
@@ -245,11 +236,6 @@ async function load(id: number) {
     } catch {
         uni.showToast({ title: '加载失败', icon: 'none' })
     }
-}
-
-function goApplyReturn() {
-    if (!order.value?.id) return
-    uni.navigateTo({ url: `/pages/return-apply/return-apply?id=${order.value.id}` })
 }
 
 function copyLogistics() {
@@ -265,7 +251,7 @@ async function confirmSettlement() {
     if (!order.value?.id) return
     try {
         uni.showLoading({ title: '确认中...', mask: true })
-        await updateOrder(order.value.id, { settlement_status: 40 })
+        await updateOrder(order.value.id, { status: 40 })
         await load(order.value.id)
         uni.showToast({ title: '已确认结算', icon: 'none' })
     } catch (err: any) {
@@ -486,6 +472,32 @@ onLoad((options) => {
         font-weight: 600;
         color: $recycle-accent;
         flex-shrink: 0;
+    }
+
+    .device-price-row {
+        margin-top: 10rpx;
+        display: flex;
+        align-items: center;
+        gap: 8rpx;
+        font-size: 24rpx;
+    }
+
+    .device-price-label {
+        color: $recycle-text-secondary;
+    }
+
+    .device-price-value {
+        color: $recycle-accent;
+        font-weight: 600;
+    }
+
+    .device-price-empty {
+        color: $recycle-muted;
+    }
+
+    .device-price-divider {
+        color: $recycle-border;
+        margin: 0 4rpx;
     }
 
     .price-line {

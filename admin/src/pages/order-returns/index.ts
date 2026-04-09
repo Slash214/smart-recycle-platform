@@ -1,1 +1,0 @@
-export { OrderReturnList } from "./list";

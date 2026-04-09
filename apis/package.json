@@ -10,7 +10,6 @@
     "db:migrate:order-fields": "node src/scripts/migrate-order-fields.js",
     "db:migrate:order-devices": "node src/scripts/migrate-order-devices.js",
     "db:migrate:order-payment-fields": "node src/scripts/migrate-order-payment-fields.js",
-    "db:migrate:order-returns": "node src/scripts/migrate-order-returns.js",
     "db:migrate:configs": "node src/scripts/migrate-configs.js",
     "prd": "",
     "test": "echo \"Error: no test specified\" && exit 1"

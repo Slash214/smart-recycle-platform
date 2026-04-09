@@ -50,8 +50,7 @@ export const OrderEdit = () => {
             nums: numsFromDevices,
             type: Number(values.type || 1),
             way: Number(values.way || 1),
-            inbound_status: Number(values.inbound_status || 10),
-            settlement_status: Number(values.settlement_status || 10),
+            status: Number(values.status || 10),
             remark_images: Array.isArray(values.remark_images) ? values.remark_images : [],
             devices: deviceRows,
           };
@@ -134,6 +133,11 @@ export const OrderEdit = () => {
                       <Col span={4}>
                         <Form.Item {...restField} name={[name, "qty"]} label="数量" rules={[{ required: true, message: "数量" }]}>
                           <InputNumber min={1} style={{ width: "100%" }} placeholder="数量" />
+                        </Form.Item>
+                      </Col>
+                      <Col span={4}>
+                        <Form.Item {...restField} name={[name, "price"]} label="单项价格">
+                          <Input placeholder="如 99.00" />
                         </Form.Item>
                       </Col>
                       <Col span={2} style={{ textAlign: "center" }}>
@@ -266,47 +270,29 @@ export const OrderEdit = () => {
                 <Input placeholder="请输入快递单号" />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item
-                label={"入库状态"}
-                name={["inbound_status"]}
-                rules={[
-                  {
-                    required: true,
-                    message: "请选择状态",
-                  },
-                ]}
-              >
-                <Select
-                  placeholder="请选择状态"
-                  options={[
-                    { value: 10, label: "待入库" },
-                    { value: 20, label: "已入库" },
-                  ]}
-                />
-              </Form.Item>
-            </Col>
+            <Col span={12} />
           </Row>
           <Row gutter={12}>
             <Col span={12}>
               <Form.Item
-                label={"结算状态"}
-                name={["settlement_status"]}
+                label={"订单状态"}
+                name={["status"]}
                 rules={[
                   {
                     required: true,
-                    message: "请选择结算状态",
+                    message: "请选择订单状态",
                   },
                 ]}
               >
                 <Select
-                  placeholder="请选择结算状态"
+                  placeholder="请选择订单状态"
                   options={[
-                    { value: 10, label: "待报价" },
-                    { value: 20, label: "已报价" },
-                    { value: 30, label: "待结算" },
-                    { value: 40, label: "已结算" },
-                    { value: 50, label: "退货中" },
+                    { value: 10, label: "已下单" },
+                    { value: 20, label: "已签收" },
+                    { value: 30, label: "已报价" },
+                    { value: 40, label: "已确认" },
+                    { value: 50, label: "已返款" },
+                    { value: 60, label: "已完成" },
                   ]}
                 />
               </Form.Item>

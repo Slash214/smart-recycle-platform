@@ -41,14 +41,6 @@
 			}
 		},
 		{
-			"path": "pages/return-apply/return-apply",
-			"style": {
-				"navigationBarTitleText": "申请退货",
-				"navigationBarBackgroundColor": "#eef2ff",
-				"navigationBarTextStyle": "black"
-			}
-		},
-		{
 			"path": "pages/details/details",
 			"style": {
 				"navigationBarTitleText": "报价"

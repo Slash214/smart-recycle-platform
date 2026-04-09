@@ -49,8 +49,7 @@ interface Order {
     way: number
     tracking_number: string
     express_company: string
-    inbound_status: number
-    settlement_status: number
+    status: number
     createdAt: string
     devices?: Array<{ model?: string; memory?: string; unit?: string; qty?: number }>
 }
@@ -65,17 +64,19 @@ const emit = defineEmits<{
 }>()
 
 const statusText = computed(() => {
-    switch (props.order.settlement_status) {
+    switch (props.order.status) {
         case 10:
-            return '待报价'
+            return '已下单'
         case 20:
-            return '已报价'
+            return '已签收'
         case 30:
-            return '待结算'
+            return '已报价'
         case 40:
-            return '已结算'
+            return '已确认'
         case 50:
-            return '退货中'
+            return '已返款'
+        case 60:
+            return '已完成'
         default:
             return '未知状态'
     }

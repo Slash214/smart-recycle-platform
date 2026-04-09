@@ -1,52 +1,35 @@
 <template>
     <view class="page">
-        <view class="tabs-surface">
-            <wd-tabs v-model="mainTab" @click="handleMainTabClick">
-                <wd-tab title="入库订单"></wd-tab>
-                <wd-tab title="结算状态"></wd-tab>
-            </wd-tabs>
-        </view>
         <view class="search-row">
             <input v-model.trim="keyword" class="search-input" placeholder="搜索关键词" />
             <view class="search-btn" @click="fetchOrders">搜索</view>
         </view>
         <scroll-view class="sub-tabs" scroll-x :show-scrollbar="false" enhanced>
             <view
-                v-for="item in currentSubTabs"
+                v-for="item in statusTabs"
                 :key="item.id"
-                :class="['sub-item', currentSubTab === item.id ? 'active' : '']"
+                :class="['sub-item', currentStatus === item.id ? 'active' : '']"
                 @click="onSubTabChange(item.id)"
             >
                 {{ item.name }}
             </view>
         </scroll-view>
         <view class="container">
-            <view v-if="isReturnPickMode && list.length" class="pick-tip">请选择一个已结算订单发起退货</view>
             <order-card
                 v-for="item in list"
                 :key="item.id"
                 :order="item"
-                :selectable="isReturnPickMode"
-                :selected="selectedReturnOrderId === item.id"
-                @choose="onChooseReturnOrder"
             ></order-card>
             <empty-state v-if="!list.length && !loading" tip="空空如也"></empty-state>
             <view v-if="loading" class="loading-text">加载中...</view>
             <view v-if="!hasMore && list.length" class="loading-text">没有更多了</view>
-        </view>
-        <view
-            v-if="isReturnPickMode"
-            :class="['bottom-btn', !selectedReturnOrderId ? 'disabled' : '']"
-            @click="goApplyReturnFromList"
-        >
-            {{ selectedReturnOrderId ? '申请退货' : '请选择一个订单' }}
         </view>
     </view>
 </template>
 
 <script lang="ts" setup>
 import { onLoad, onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import { getOrderList } from '@/apis'
 import OrderCard from '@/components/OrderCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -59,8 +42,7 @@ interface Order {
     way: number
     tracking_number: string
     express_company: string
-    inbound_status: 10 | 20
-    settlement_status: 10 | 20 | 30 | 40 | 50
+    status: 10 | 20 | 30 | 40 | 50 | 60
     createdAt: string
 }
 
@@ -70,24 +52,16 @@ const page = ref(1)
 const pageSize = 20
 const loading = ref(false)
 const hasMore = ref(true)
-const selectedReturnOrderId = ref<number | null>(null)
 const initialized = ref(false)
-
-const mainTab = ref(0)
-const currentSubTab = ref('pendingInbound')
-const inboundTabs = [
-    { id: 'pendingInbound', name: '待入库单' },
-    { id: 'pendingSettlement', name: '待结算单' },
+const statusTabs = [
+    { id: 10, name: '已下单' },
+    { id: 20, name: '已签收' },
+    { id: 30, name: '已报价' },
+    { id: 40, name: '已确认' },
+    { id: 50, name: '已返款' },
+    { id: 60, name: '已完成' },
 ]
-const settlementTabs = [
-    { id: 'waitQuote', name: '待报价' },
-    { id: 'quoted', name: '已报价' },
-    { id: 'waitSettle', name: '待结算' },
-    { id: 'settled', name: '已结算' },
-    { id: 'returning', name: '退货中' },
-]
-const currentSubTabs = computed(() => (mainTab.value === 0 ? inboundTabs : settlementTabs))
-const isReturnPickMode = computed(() => mainTab.value === 1 && currentSubTab.value === 'settled')
+const currentStatus = ref<number>(10)
 
 /** 后端 list 接口的 data 直接是数组；兼容 { list/data/rows } 包裹形态 */
 function normalizeOrderRows(payload: unknown): Order[] {
@@ -103,24 +77,7 @@ function normalizeOrderRows(payload: unknown): Order[] {
 const buildQuery = () => {
     const query: Record<string, any> = { page: page.value, pageSize }
     if (keyword.value) query.keyword = keyword.value
-    if (mainTab.value === 0) {
-        if (currentSubTab.value === 'pendingInbound') {
-            query.inbound_status = 10
-            query.settlement_status = 10
-        } else if (currentSubTab.value === 'pendingSettlement') {
-            query.inbound_status = 20
-            query.settlement_status = 30
-        }
-        return query
-    }
-    const settlementMap: Record<string, number> = {
-        waitQuote: 10,
-        quoted: 20,
-        waitSettle: 30,
-        settled: 40,
-        returning: 50,
-    }
-    query.settlement_status = settlementMap[currentSubTab.value]
+    query.status = currentStatus.value
     return query
 }
 
@@ -137,7 +94,6 @@ const fetchOrders = async (reset = true) => {
         const data = await getOrderList(buildQuery() as any)
         const rows = normalizeOrderRows(data)
         list.value = reset ? rows : [...list.value, ...rows]
-        if (reset) selectedReturnOrderId.value = null
         hasMore.value = rows.length >= pageSize
         if (rows.length >= pageSize) page.value += 1
     } finally {
@@ -145,44 +101,16 @@ const fetchOrders = async (reset = true) => {
     }
 }
 
-const handleMainTabClick = (e: any) => {
-    const current = Number(e?.name ?? mainTab.value ?? 0)
-    mainTab.value = current
-    currentSubTab.value = current === 0 ? 'pendingInbound' : 'waitQuote'
+const onSubTabChange = (id: number) => {
+    currentStatus.value = id
     fetchOrders(true)
-}
-
-const onSubTabChange = (id: string) => {
-    currentSubTab.value = id
-    selectedReturnOrderId.value = null
-    fetchOrders(true)
-}
-
-const onChooseReturnOrder = (id: number) => {
-    if (!isReturnPickMode.value) return
-    selectedReturnOrderId.value = selectedReturnOrderId.value === id ? null : id
-}
-
-const goApplyReturnFromList = () => {
-    if (!selectedReturnOrderId.value) {
-        uni.showToast({ title: '请先选择一个已结算订单', icon: 'none' })
-        return
-    }
-    uni.navigateTo({ url: `/pages/order-detail/order-detail?id=${selectedReturnOrderId.value}` })
 }
 
 onLoad((options) => {
     const sourceType = Number(options?.type || 0)
-    if (sourceType === 1) {
-        mainTab.value = 0
-        currentSubTab.value = 'pendingSettlement'
-    } else if (sourceType === 2) {
-        mainTab.value = 1
-        currentSubTab.value = 'settled'
-    } else {
-        mainTab.value = 0
-        currentSubTab.value = 'pendingInbound'
-    }
+    if (sourceType === 1) currentStatus.value = 20
+    else if (sourceType === 2) currentStatus.value = 30
+    else currentStatus.value = 10
     fetchOrders(true)
     initialized.value = true
 })

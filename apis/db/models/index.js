@@ -3,7 +3,6 @@ const Phone = require('./phone')
 const User = require('./user')
 const Order = require('./order')
 const OrderDevice = require('./order_device')
-const OrderReturn = require('./order_return')
 const Address = require('./address')
 const Banner = require('./banner')
 const Details = require('./detailes')
@@ -29,8 +28,6 @@ Ptype.hasMany(Brand, {
 
 Order.hasMany(OrderDevice, { foreignKey: 'order_id', as: 'devices', onDelete: 'CASCADE' })
 OrderDevice.belongsTo(Order, { foreignKey: 'order_id' })
-Order.hasMany(OrderReturn, { foreignKey: 'order_id', as: 'return_requests', onDelete: 'CASCADE' })
-OrderReturn.belongsTo(Order, { foreignKey: 'order_id' })
 
 module.exports = {
     Brand,
@@ -38,7 +35,6 @@ module.exports = {
     User,
     Order,
     OrderDevice,
-    OrderReturn,
     Address,
     Banner,
     Details,

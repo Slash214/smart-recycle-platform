@@ -403,7 +403,7 @@ const onSubmit = async () => {
                 qty: parseInt(String(l.qty).trim(), 10) || 0,
             })),
             remark_images: cleanedRemarkImages,
-            status: 1,
+            status: 10,
         })
         toast.success('下单成功')
         timer.value = setTimeout(() => {

@@ -1,4 +1,4 @@
-const { Order, OrderDevice, OrderReturn } = require('../../../db/models')
+const { Order, OrderDevice } = require('../../../db/models')
 const seq = require('../../../db/seq')
 const { Op } = require('../../../db/type')
 
@@ -53,6 +53,7 @@ function mapDevicesFromRows(rows) {
         memory: r.memory,
         unit: toInt(r.unit_type, 1) === 2 ? 'board' : 'whole',
         qty: toInt(r.qty, 0),
+        price: r.price === null || r.price === undefined ? null : String(r.price),
     }))
 }
 
@@ -99,7 +100,11 @@ function validateDeviceLines(raw) {
         if (qty < 1) {
             throw new Error(`设备明细第 ${i + 1} 条：数量须为大于 0 的整数`)
         }
-        out.push({ model, memory, unit_type: unit, qty })
+        const price =
+            d.price === undefined || d.price === null || String(d.price).trim() === ''
+                ? null
+                : String(d.price).trim()
+        out.push({ model, memory, unit_type: unit, qty, price })
     }
     return out
 }
@@ -129,6 +134,7 @@ async function saveOrderDevices(orderId, lines, transaction) {
         memory: line.memory,
         unit_type: line.unit_type,
         qty: line.qty,
+        price: line.price,
         sort_order: index,
     }))
     await OrderDevice.bulkCreate(rows, { transaction })
@@ -136,60 +142,35 @@ async function saveOrderDevices(orderId, lines, transaction) {
 
 function normalizeOrderRow(row) {
     const plain = row.toJSON ? row.toJSON() : row
-    const inboundStatus = toInt(plain.inbound_status, 10)
-    const settlementStatus = toInt(plain.settlement_status, 10)
+    const status = toInt(plain.status, 10)
     const devices = mapDevicesFromRows(plain.devices)
     delete plain.devices
     return {
         ...plain,
         devices,
         remark_images: parseRemarkImagesValue(plain.remark_images),
-        inbound_status: inboundStatus,
-        settlement_status: settlementStatus,
-        status: plain.status === 0 ? 0 : mapLegacyStatus(inboundStatus, settlementStatus),
+        status,
     }
 }
 
-function mapLegacyStatus(inboundStatus, settlementStatus) {
-    if (settlementStatus >= 40) return 3
-    if (inboundStatus >= 20) return 2
-    return 1
+function isValidOrderStatus(status) {
+    return [10, 20, 30, 40, 50, 60].includes(toInt(status, -1))
 }
 
 function resolveOrderStatus(payload = {}) {
-    const hasInbound = payload.inbound_status !== undefined && payload.inbound_status !== ''
-    const hasSettlement = payload.settlement_status !== undefined && payload.settlement_status !== ''
-    if (hasInbound || hasSettlement) {
-        const inboundStatus = hasInbound ? toInt(payload.inbound_status, 10) : 10
-        const settlementStatus = hasSettlement ? toInt(payload.settlement_status, 10) : 10
-        return {
-            inbound_status: inboundStatus,
-            settlement_status: settlementStatus,
-            status: mapLegacyStatus(inboundStatus, settlementStatus),
-        }
+    if (payload.status !== undefined && payload.status !== '' && isValidOrderStatus(payload.status)) {
+        return { status: toInt(payload.status, 10) }
     }
-    return { inbound_status: 10, settlement_status: 10, status: 1 }
+    return { status: 10 }
 }
 
-/** 更新订单时与当前记录合并，避免只改一项却把另一项重置为默认值 */
 function mergeStatusFieldsForUpdate(payload, current) {
-    const touchesInbound = payload.inbound_status !== undefined
-    const touchesSettlement = payload.settlement_status !== undefined
-    const touchesLegacyStatus = payload.status !== undefined
-
-    if (touchesInbound || touchesSettlement) {
-        const inboundStatus = touchesInbound ? toInt(payload.inbound_status, current.inbound_status) : current.inbound_status
-        const settlementStatus = touchesSettlement
-            ? toInt(payload.settlement_status, current.settlement_status)
-            : current.settlement_status
-        return {
-            inbound_status: inboundStatus,
-            settlement_status: settlementStatus,
-            status: mapLegacyStatus(inboundStatus, settlementStatus),
+    if (payload.status !== undefined && payload.status !== '') {
+        const nextStatus = toInt(payload.status, current.status)
+        if (!isValidOrderStatus(nextStatus)) {
+            throw new Error('status 仅支持 10/20/30/40/50/60')
         }
-    }
-    if (touchesLegacyStatus) {
-        return { status: toInt(payload.status, current.status) }
+        return { status: nextStatus }
     }
     return {}
 }
@@ -200,10 +181,8 @@ async function listOrders(query) {
     if (query.userid) where.userid = String(query.userid)
     if (query.type !== undefined && query.type !== '') where.type = toInt(query.type, 0)
     if (query.way !== undefined && query.way !== '') where.way = toInt(query.way, 1)
-    if (query.inbound_status !== undefined && query.inbound_status !== '') where.inbound_status = toInt(query.inbound_status, 10)
-    if (query.settlement_status !== undefined && query.settlement_status !== '') where.settlement_status = toInt(query.settlement_status, 10)
-    if (query.status !== undefined && query.status !== '') where.status = toInt(query.status, 1)
-    else where.status = { [Op.in]: [1, 2, 3] }
+    if (query.status !== undefined && query.status !== '') where.status = toInt(query.status, 10)
+    else where.status = { [Op.in]: [10, 20, 30, 40, 50, 60] }
 
     if (query.keyword) {
         const keyword = String(query.keyword).trim()
@@ -340,7 +319,7 @@ async function updateOrder(id, payload) {
     if (payload.alipay_account !== undefined) updatePayload.alipay_account = toCleanString(payload.alipay_account)
     if (payload.bank_name !== undefined) updatePayload.bank_name = toCleanString(payload.bank_name)
     if (payload.bank_card_no !== undefined) updatePayload.bank_card_no = toCleanString(payload.bank_card_no)
-    if (payload.inbound_status !== undefined || payload.settlement_status !== undefined || payload.status !== undefined) {
+    if (payload.status !== undefined) {
         const merged = mergeStatusFieldsForUpdate(payload, current)
         if (Object.keys(merged).length) {
             Object.assign(updatePayload, merged)
@@ -361,106 +340,10 @@ async function updateOrder(id, payload) {
 
 async function deleteOrder(id) { await Order.update({ status: 0 }, { where: { id } }) }
 
-async function getLatestReturnByOrder(orderId) {
-    const row = await OrderReturn.findOne({
-        where: { order_id: orderId },
-        order: [['id', 'desc']],
-    })
-    return row ? (row.toJSON ? row.toJSON() : row) : null
-}
-
-async function createReturnRequest(order, userid, reason) {
-    const now = new Date().toISOString()
-    return seq.transaction(async (t) => {
-        const created = await OrderReturn.create(
-            {
-                order_id: order.id,
-                userid: String(userid),
-                reason: String(reason).trim(),
-                status: 10,
-                audit_at: '',
-                reject_reason: '',
-            },
-            { transaction: t },
-        )
-        await Order.update(
-            {
-                settlement_status: 50,
-                status: mapLegacyStatus(order.inbound_status, 50),
-                updatedAt: now,
-            },
-            { where: { id: order.id }, transaction: t },
-        )
-        return created.toJSON ? created.toJSON() : created
-    })
-}
-
-async function listReturnRequests(query = {}) {
-    const { page, pageSize, offset } = toPage(query)
-    const where = {}
-    if (query.status !== undefined && query.status !== '') where.status = toInt(query.status, 10)
-    if (query.keyword) {
-        const keyword = String(query.keyword).trim()
-        if (keyword) {
-            where[Op.or] = [{ reason: { [Op.like]: `%${keyword}%` } }, { userid: { [Op.like]: `%${keyword}%` } }]
-        }
-    }
-    const result = await OrderReturn.findAndCountAll({
-        where,
-        order: [['id', 'desc']],
-        limit: pageSize,
-        offset,
-        include: [{ model: Order, required: false }],
-    })
-    return { rows: result.rows.map((r) => (r.toJSON ? r.toJSON() : r)), total: result.count, page, pageSize }
-}
-
-async function auditReturnRequest(id, action, rejectReason, adminId) {
-    const row = await OrderReturn.findByPk(id)
-    if (!row) return null
-    const current = row.toJSON ? row.toJSON() : row
-    if (toInt(current.status, 10) !== 10) {
-        throw new Error('仅待审核申请可操作')
-    }
-    const nextStatus = action === 'approve' ? 20 : 30
-    const nextOrderSettlement = action === 'approve' ? 60 : 70
-    const now = new Date().toISOString()
-
-    await seq.transaction(async (t) => {
-        await OrderReturn.update(
-            {
-                status: nextStatus,
-                reject_reason: action === 'reject' ? String(rejectReason || '').trim() : '',
-                audit_admin_id: adminId ? Number(adminId) : null,
-                audit_at: now,
-            },
-            { where: { id }, transaction: t },
-        )
-        const orderRow = await Order.findByPk(current.order_id, { transaction: t })
-        if (orderRow) {
-            const orderPlain = orderRow.toJSON ? orderRow.toJSON() : orderRow
-            await Order.update(
-                {
-                    settlement_status: nextOrderSettlement,
-                    status: mapLegacyStatus(toInt(orderPlain.inbound_status, 10), nextOrderSettlement),
-                    updatedAt: now,
-                },
-                { where: { id: current.order_id }, transaction: t },
-            )
-        }
-    })
-    const reloaded = await OrderReturn.findByPk(id)
-    return reloaded ? (reloaded.toJSON ? reloaded.toJSON() : reloaded) : null
-}
-
 module.exports = {
     listOrders,
     getOrder,
     createOrder,
     updateOrder,
     deleteOrder,
-    getLatestReturnByOrder,
-    createReturnRequest,
-    listReturnRequests,
-    auditReturnRequest,
 }

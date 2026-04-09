@@ -13,6 +13,11 @@ function isValidSettlementStatus(status) {
     return [10, 20, 30, 40, 50].includes(parseInt(status, 10))
 }
 
+function hasPriceValue(price) {
+    if (price === null || price === undefined) return false
+    return String(price).trim() !== ''
+}
+
 async function list(request) {
     const query = { ...(request.query || {}) }
     if (!isAdmin(request) && request.user && request.user.uid) {
@@ -51,6 +56,10 @@ async function create(request, reply) {
     if (body.settlement_status !== undefined && !isValidSettlementStatus(body.settlement_status)) {
         return reply.code(400).send(fail(40001, 'settlement_status 仅支持 10/20/30/40/50'))
     }
+    const settlementStatus = parseInt(body.settlement_status, 10)
+    if (!Number.isNaN(settlementStatus) && settlementStatus >= 20 && !hasPriceValue(body.price)) {
+        return reply.code(400).send(fail(40001, '结算状态为已报价及之后时，price 必填'))
+    }
     return ok(await service.createOrder(body), '创建成功')
 }
 
@@ -67,6 +76,13 @@ async function update(request, reply) {
     }
     if (body.settlement_status !== undefined && !isValidSettlementStatus(body.settlement_status)) {
         return reply.code(400).send(fail(40001, 'settlement_status 仅支持 10/20/30/40/50'))
+    }
+    const nextSettlementStatus = body.settlement_status !== undefined
+        ? parseInt(body.settlement_status, 10)
+        : parseInt(old.settlement_status, 10)
+    const nextPrice = body.price !== undefined ? body.price : old.price
+    if (!Number.isNaN(nextSettlementStatus) && nextSettlementStatus >= 20 && !hasPriceValue(nextPrice)) {
+        return reply.code(400).send(fail(40001, '结算状态为已报价及之后时，price 必填'))
     }
     return ok(await service.updateOrder(request.params.id, body), '更新成功')
 }

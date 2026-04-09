@@ -55,6 +55,14 @@ export const OrderCreate = () => {
         </Form.Item>
 
         <Form.Item
+          label={"报价金额"}
+          name={["price"]}
+          extra="当结算状态为已报价及之后时，建议填写报价金额"
+        >
+          <Input placeholder="请输入报价金额，如 199.00" />
+        </Form.Item>
+
+        <Form.Item
           label={"类型"}
           name={["type"]}
           initialValue={1}

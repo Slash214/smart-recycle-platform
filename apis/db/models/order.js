@@ -10,8 +10,8 @@ const Order = seq.define('order', {
 	},
 	price: {
 		type: STRING,
-		allowNull: false,
-		comment: '价格'
+		allowNull: true,
+		comment: '价格（可空，待报价后再填）'
 	},
 	phone: {
 		type: STRING,

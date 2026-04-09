@@ -1,5 +1,5 @@
 <template>
-    <view class="order-card">
+    <view class="order-card" @click="goDetail">
         <view class="header">
             <text class="courier">{{ order.express_company || '-' }}</text>
             <text class="status">{{ statusText }}</text>
@@ -88,20 +88,27 @@ const formattedCreatedAt = computed(() => {
     const mm = String(date.getMinutes()).padStart(2, '0')
     return `${y}-${m}-${d} ${hh}:${mm}`
 })
+
+const goDetail = () => {
+    uni.navigateTo({
+        url: `/pages/order-detail/order-detail?id=${props.order.id}`,
+    })
+}
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/recycle-ui.scss';
+
 .order-card {
-    background-color: #fff;
+    background-color: $recycle-surface;
     margin-bottom: 24rpx;
     padding: 32rpx;
     border-radius: 16rpx;
-    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.06);
-    transition: all 0.3s;
+    border: 1rpx solid $recycle-border-light;
+    transition: background 0.2s ease;
 
     &:active {
-        transform: scale(0.98);
-        box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+        background-color: $recycle-warm;
     }
 }
 
@@ -112,23 +119,24 @@ const formattedCreatedAt = computed(() => {
     align-items: center;
     margin-bottom: 24rpx;
     padding-bottom: 20rpx;
-    border-bottom: 1rpx solid #f0f0f0;
+    border-bottom: 1rpx solid $recycle-border-light;
 }
 
 .courier {
     font-size: 36rpx;
     font-weight: 700;
-    color: #222;
+    color: $recycle-text;
     line-height: 1.4;
 }
 
 .status {
-    font-size: 28rpx;
-    color: #1957ff;
-    font-weight: 500;
-    padding: 8rpx 16rpx;
-    background: rgba(25, 87, 255, 0.08);
+    font-size: 26rpx;
+    color: $recycle-accent-dark;
+    font-weight: 600;
+    padding: 8rpx 18rpx;
+    background: $recycle-accent-soft;
     border-radius: 8rpx;
+    border: 1rpx solid $recycle-accent-muted;
 }
 
 .content {
@@ -149,14 +157,14 @@ const formattedCreatedAt = computed(() => {
 }
 
 .label {
-    color: #666;
+    color: $recycle-text-secondary;
     margin-right: 16rpx;
     min-width: 140rpx;
     font-weight: 400;
 }
 
 .value {
-    color: #333;
+    color: $recycle-text;
     font-weight: 500;
     flex: 1;
 }
@@ -164,11 +172,11 @@ const formattedCreatedAt = computed(() => {
 .price-row {
     margin-top: 12rpx;
     padding-top: 16rpx;
-    border-top: 1rpx solid #f5f5f5;
+    border-top: 1rpx solid $recycle-border-light;
 }
 
 .price-value {
-    color: #1957ff;
+    color: $recycle-accent;
     font-weight: 600;
     font-size: 30rpx;
 }
@@ -176,12 +184,12 @@ const formattedCreatedAt = computed(() => {
 .footer {
     text-align: right;
     padding-top: 20rpx;
-    border-top: 1rpx solid #f5f5f5;
+    border-top: 1rpx solid $recycle-border-light;
 }
 
 .time {
     font-size: 24rpx;
-    color: #999;
+    color: $recycle-muted;
     line-height: 1.4;
 }
 </style>

@@ -67,6 +67,14 @@ export const OrderEdit = () => {
           <InputNumber min={1} style={{ width: "100%" }} placeholder="请输入数量" />
         </Form.Item>
 
+        <Form.Item
+          label={"报价金额"}
+          name={["price"]}
+          extra="当结算状态为已报价及之后时，必须填写报价金额"
+        >
+          <Input placeholder="请输入报价金额，如 199.00" />
+        </Form.Item>
+
         <Form.Item label={"类型"} name={["type"]} rules={[{ required: true, message: "请选择类型" }]}>
           <Select
             placeholder="请选择类型"

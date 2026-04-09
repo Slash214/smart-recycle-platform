@@ -270,15 +270,16 @@ onShareAppMessage(() => {
 </script>
 
 <style lang="scss" scoped>
+@import '@/styles/recycle-ui.scss';
 .reset-button {
-    background-color: #fff;
+    background-color: $recycle-surface;
     border: none;
     padding: 0;
     margin: 0;
     line-height: 1.4;
     display: flex;
     align-items: flex-start;
-    color: #222;
+    color: $recycle-text;
     font-size: 30rpx;
 
     &::after {
@@ -291,7 +292,7 @@ onShareAppMessage(() => {
 }
 
 .nav {
-    background: linear-gradient(180deg, #2563eb 0%, #3b82f6 42%, #f3f6fb 100%);
+    background: linear-gradient(180deg, #3f6bff 0%, #6b7cff 44%, #eef2ff 100%);
     width: 100%;
     height: 200px;
     position: fixed;
@@ -312,22 +313,22 @@ onShareAppMessage(() => {
         width: 100%;
         height: 180px;
         border-radius: 16rpx;
-        background: linear-gradient(90deg, #f2f3f5 25%, #e9ebef 50%, #f2f3f5 75%);
+        background: linear-gradient(90deg, #f2f4ff 25%, #e8ecff 50%, #f2f4ff 75%);
         background-size: 200% 100%;
         animation: skeleton-loading 1.2s linear infinite;
     }
 
     .block {
-        background-color: #ffffff;
+        background-color: $recycle-surface;
         border-radius: 20rpx;
         padding: 32rpx;
         margin-top: 20rpx;
-        box-shadow: 0 10rpx 26rpx rgba(15, 23, 42, 0.05);
+        border: 1rpx solid $recycle-border-light;
 
         .brand-title {
             font-weight: 700;
             font-size: 36rpx;
-            color: #1d4ed8;
+            color: $recycle-accent-dark;
             text-align: center;
             padding: 22rpx 0 30rpx 0;
             position: relative;
@@ -345,8 +346,8 @@ onShareAppMessage(() => {
                 height: 2rpx;
                 background: linear-gradient(90deg,
                         transparent 0%,
-                        rgba(37, 99, 235, 0.28) 50%,
-                        #2563eb 100%);
+                        rgba(47, 125, 74, 0.26) 50%,
+                        $recycle-accent 100%);
                 border-radius: 2rpx;
             }
 
@@ -357,8 +358,8 @@ onShareAppMessage(() => {
             &::after {
                 right: 0;
                 background: linear-gradient(90deg,
-                        #2563eb 0%,
-                        rgba(37, 99, 235, 0.28) 50%,
+                        $recycle-accent 0%,
+                        rgba(47, 125, 74, 0.26) 50%,
                         transparent 100%);
             }
         }
@@ -377,13 +378,13 @@ onShareAppMessage(() => {
             align-items: center;
             justify-content: center;
             border-radius: 4px;
-            border: 1rpx solid #ddd;
+            border: 1rpx solid $recycle-border;
             margin-right: 20rpx;
         }
 
         .active {
-            background-color: rgba(25, 87, 255, 0.12);
-            color: #1957ff;
+            background-color: $recycle-accent-soft;
+            color: $recycle-accent-dark;
         }
     }
 
@@ -411,7 +412,7 @@ onShareAppMessage(() => {
 
             .name {
                 font-size: 24rpx;
-                color: #1f2937;
+                color: $recycle-text;
                 height: 30px;
                 text-align: center;
             }
@@ -429,6 +430,7 @@ onShareAppMessage(() => {
             align-items: center;
             flex-direction: column;
             font-size: 24rpx;
+            color: $recycle-text-secondary;
 
             image {
                 width: 20px;
@@ -439,16 +441,16 @@ onShareAppMessage(() => {
     }
 
     .addressInfo {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        background: $recycle-accent-soft;
         border-radius: 20rpx;
         overflow: hidden;
         padding: 0;
         margin-top: 20rpx;
-        box-shadow: 0 14rpx 30rpx rgba(29, 78, 216, 0.2);
+        border: 1rpx solid $recycle-accent-muted;
 
         .header {
             background-color: transparent;
-            color: #fff;
+            color: $recycle-accent-dark;
             text-align: center;
             padding: 24rpx 32rpx;
             font-size: 29rpx;
@@ -456,10 +458,11 @@ onShareAppMessage(() => {
         }
 
         .body {
-            background-color: #fff;
+            background-color: $recycle-surface;
             padding: 32rpx;
             margin: 0 14rpx 14rpx 14rpx;
             border-radius: 14rpx;
+            border: 1rpx solid $recycle-border-light;
         }
 
         .info-row {
@@ -479,25 +482,26 @@ onShareAppMessage(() => {
             .info-text {
                 flex: 1;
                 font-size: 28rpx;
-                color: #222;
+                color: $recycle-text;
                 margin-left: 16rpx;
                 margin-right: 16rpx;
                 word-break: break-all;
 
                 &.address-text {
-                    color: #222;
+                    color: $recycle-text;
                     line-height: 1.5;
                 }
             }
 
             .action-btn {
-                background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                background: $recycle-accent;
                 color: #fff;
                 padding: 10rpx 28rpx;
                 border-radius: 10rpx;
                 font-size: 24rpx;
                 font-weight: 600;
                 white-space: nowrap;
+                border: 1rpx solid $recycle-accent-dark;
             }
         }
     }
@@ -521,7 +525,7 @@ onShareAppMessage(() => {
             }
 
             .cover {
-                background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                background: $recycle-accent;
                 border-radius: 50%;
                 width: 30px;
                 height: 30px;

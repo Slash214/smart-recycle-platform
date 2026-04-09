@@ -101,6 +101,7 @@ onShow(() => {
 </script>
 
 <style lang="scss" scoped>
+@import '@/styles/recycle-ui.scss';
 .custom-tabbar {
     position: fixed;
     bottom: 0;
@@ -108,11 +109,11 @@ onShow(() => {
     right: 0;
     width: 100%;
     height: 150rpx;
-    background-color: #fff;
+    background-color: $recycle-surface;
     display: flex;
     align-items: center;
     justify-content: space-around;
-    box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+    border-top: 1rpx solid $recycle-border-light;
     z-index: 999;
 
     .tab-item {
@@ -139,11 +140,11 @@ onShow(() => {
 
         .text {
             font-size: 22rpx;
-            color: #999;
+            color: $recycle-muted;
             transition: color 0.3s;
 
             &.active {
-                color: #1957ff;
+                color: $recycle-accent;
             }
         }
     }
@@ -161,13 +162,13 @@ onShow(() => {
         .button-content {
             width: 120rpx;
             height: 120rpx;
-            background: linear-gradient(135deg, #1957ff 0%, #0d3dcc 100%);
+            background: $recycle-accent;
             border-radius: 50%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 8rpx 24rpx rgba(25, 87, 255, 0.5);
+            border: 2rpx solid $recycle-accent-dark;
             position: relative;
             z-index: 1;
             transition: transform 0.2s;

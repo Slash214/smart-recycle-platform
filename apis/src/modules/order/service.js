@@ -73,6 +73,29 @@ function resolveOrderStatus(payload = {}) {
     return { inbound_status: 10, settlement_status: 10, status: 1 }
 }
 
+/** 更新订单时与当前记录合并，避免只改一项却把另一项重置为默认值 */
+function mergeStatusFieldsForUpdate(payload, current) {
+    const touchesInbound = payload.inbound_status !== undefined
+    const touchesSettlement = payload.settlement_status !== undefined
+    const touchesLegacyStatus = payload.status !== undefined
+
+    if (touchesInbound || touchesSettlement) {
+        const inboundStatus = touchesInbound ? toInt(payload.inbound_status, current.inbound_status) : current.inbound_status
+        const settlementStatus = touchesSettlement
+            ? toInt(payload.settlement_status, current.settlement_status)
+            : current.settlement_status
+        return {
+            inbound_status: inboundStatus,
+            settlement_status: settlementStatus,
+            status: mapLegacyStatus(inboundStatus, settlementStatus),
+        }
+    }
+    if (touchesLegacyStatus) {
+        return { status: toInt(payload.status, current.status) }
+    }
+    return {}
+}
+
 async function listOrders(query) {
     const { page, pageSize, offset } = toPage(query)
     const where = {}
@@ -125,23 +148,45 @@ async function createOrder(payload) {
         express_company: payload.express_company || '',
         remark_images: normalizeRemarkImages(payload.remark_images),
     }
+    // 未传或空字符串时存 NULL，避免 NOT NULL 约束报错
+    if (
+        createPayload.price === undefined ||
+        createPayload.price === null ||
+        createPayload.price === ''
+    ) {
+        createPayload.price = null
+    }
     const created = await Order.create(createPayload)
     return normalizeOrderRow(created)
 }
 
 async function updateOrder(id, payload) {
+    const existingRow = await Order.findByPk(id)
+    if (!existingRow) return null
+    const current = normalizeOrderRow(existingRow)
+
     const updatePayload = { ...payload }
+    if (
+        updatePayload.price !== undefined &&
+        (updatePayload.price === null || updatePayload.price === '')
+    ) {
+        updatePayload.price = null
+    }
     if (payload.way !== undefined && payload.way !== '') {
         updatePayload.way = toInt(payload.way, 1)
     }
     if (payload.inbound_status !== undefined || payload.settlement_status !== undefined || payload.status !== undefined) {
-        Object.assign(updatePayload, resolveOrderStatus(payload))
+        const merged = mergeStatusFieldsForUpdate(payload, current)
+        if (Object.keys(merged).length) {
+            Object.assign(updatePayload, merged)
+        }
     }
     if (payload.remark_images !== undefined) {
         updatePayload.remark_images = normalizeRemarkImages(payload.remark_images)
     }
     await Order.update(updatePayload, { where: { id } })
-    return getOrder(id)
+    await existingRow.reload()
+    return normalizeOrderRow(existingRow)
 }
 
 async function deleteOrder(id) { await Order.update({ status: 0 }, { where: { id } }) }

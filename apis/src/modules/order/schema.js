@@ -38,7 +38,7 @@ module.exports = {
             required: ['nums', 'phone'],
             properties: {
                 nums: { type: 'integer', minimum: 1 },
-                price: { type: 'string' },
+                price: { type: ['string', 'null'], description: '可选，未报价可为空' },
                 phone: { type: 'string' },
                 remark: { type: 'string' },
                 way: { type: 'integer', enum: [1, 2, 3], description: '收款方式：1微信 2支付宝 3银行卡' },
@@ -77,7 +77,7 @@ module.exports = {
             type: 'object',
             properties: {
                 nums: { type: 'integer', minimum: 1 },
-                price: { type: 'string' },
+                price: { type: ['string', 'null'], description: '可选，未报价可为空' },
                 phone: { type: 'string' },
                 remark: { type: 'string' },
                 way: { type: 'integer', enum: [1, 2, 3], description: '收款方式：1微信 2支付宝 3银行卡' },

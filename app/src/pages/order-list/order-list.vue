@@ -1,9 +1,11 @@
 <template>
     <view class="page">
-        <wd-tabs v-model="mainTab" @click="handleMainTabClick">
-            <wd-tab title="入库订单"></wd-tab>
-            <wd-tab title="结算状态"></wd-tab>
-        </wd-tabs>
+        <view class="tabs-surface">
+            <wd-tabs v-model="mainTab" @click="handleMainTabClick">
+                <wd-tab title="入库订单"></wd-tab>
+                <wd-tab title="结算状态"></wd-tab>
+            </wd-tabs>
+        </view>
         <view class="search-row">
             <input v-model.trim="keyword" class="search-input" placeholder="搜索关键词" />
             <view class="search-btn" @click="fetchOrders">搜索</view>
@@ -70,6 +72,17 @@ const settlementTabs = [
 ]
 const currentSubTabs = computed(() => (mainTab.value === 0 ? inboundTabs : settlementTabs))
 
+/** 后端 list 接口的 data 直接是数组；兼容 { list/data/rows } 包裹形态 */
+function normalizeOrderRows(payload: unknown): Order[] {
+    if (Array.isArray(payload)) return payload as Order[]
+    if (payload && typeof payload === 'object') {
+        const o = payload as { list?: unknown; data?: unknown; rows?: unknown }
+        const rows = o.list ?? o.data ?? o.rows
+        return Array.isArray(rows) ? (rows as Order[]) : []
+    }
+    return []
+}
+
 const buildQuery = () => {
     const query: Record<string, any> = { page: page.value, pageSize }
     if (keyword.value) query.keyword = keyword.value
@@ -105,7 +118,7 @@ const fetchOrders = async (reset = true) => {
     loading.value = true
     try {
         const data = await getOrderList(buildQuery() as any)
-        const rows = (data?.list || data?.data || []) as Order[]
+        const rows = normalizeOrderRows(data)
         list.value = reset ? rows : [...list.value, ...rows]
         hasMore.value = rows.length >= pageSize
         if (rows.length >= pageSize) page.value += 1
@@ -152,10 +165,29 @@ onReachBottom(async () => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/recycle-ui.scss';
+
 .page {
     min-height: 100vh;
-    background-color: #f5f5f5;
+    background-color: $recycle-bg;
     padding-bottom: 200rpx;
+}
+
+.tabs-surface {
+    background: $recycle-surface;
+    border-bottom: 1rpx solid $recycle-border-light;
+}
+
+/* 顶部 Tab 与回收绿主色对齐（wot-design 结构） */
+:deep(.wd-tabs__nav) {
+    background: $recycle-surface !important;
+}
+:deep(.wd-tabs__nav-item.is-active) {
+    color: $recycle-accent !important;
+    font-weight: 600;
+}
+:deep(.wd-tabs__line) {
+    background: $recycle-accent !important;
 }
 
 .search-row {
@@ -169,21 +201,23 @@ onReachBottom(async () => {
     flex: 1;
     height: 68rpx;
     border-radius: 14rpx;
-    background: #fff;
-    border: 1px solid #eef0f4;
+    background: $recycle-surface;
+    border: 1rpx solid $recycle-border;
     padding: 0 20rpx;
+    color: $recycle-text;
 }
 
 .search-btn {
     width: 124rpx;
     height: 68rpx;
     border-radius: 14rpx;
-    background: #fffbe8;
-    border: 1px solid #f1e9c8;
-    color: #1f2937;
+    background: $recycle-accent-soft;
+    border: 1rpx solid $recycle-accent-muted;
+    color: $recycle-accent-dark;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-weight: 500;
 }
 
 .sub-tabs {
@@ -197,17 +231,20 @@ onReachBottom(async () => {
 .sub-item {
     display: inline-flex;
     margin-right: 16rpx;
-    color: #1f2937;
+    color: $recycle-text-secondary;
     font-size: 30rpx;
     line-height: 54rpx;
-    padding: 0 20rpx;
+    padding: 0 22rpx;
     border-radius: 27rpx;
     white-space: nowrap;
+    border: 1rpx solid transparent;
 }
 
 .active {
-    background: #3f6bff;
-    color: #fff;
+    background: $recycle-accent-soft;
+    color: $recycle-accent-dark;
+    border-color: $recycle-accent-muted;
+    font-weight: 600;
 }
 
 .container {
@@ -222,17 +259,19 @@ onReachBottom(async () => {
     right: 24rpx;
     height: 88rpx;
     border-radius: 44rpx;
-    background: #3f6bff;
+    background: $recycle-accent;
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 34rpx;
+    font-weight: 600;
+    border: 1rpx solid $recycle-accent-dark;
 }
 
 .loading-text {
     text-align: center;
-    color: #9ca3af;
+    color: $recycle-muted;
     font-size: 26rpx;
     padding: 24rpx 0;
 }

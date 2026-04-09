@@ -18,6 +18,14 @@ async function run() {
     if (!names.has('settlement_status')) {
         await seq.query("ALTER TABLE orders ADD COLUMN settlement_status TINYINT NOT NULL DEFAULT 10 COMMENT '结算状态：10待报价 20已报价 30待结算 40已结算 50退货中 0已删除' AFTER inbound_status")
     }
+
+    // price 允许为空（创建订单时可不填，待报价后再填）
+    const priceCol = (cols || []).find((c) => c.Field === 'price')
+    if (priceCol && String(priceCol.Null).toUpperCase() !== 'YES') {
+        await seq.query(
+            "ALTER TABLE orders MODIFY COLUMN price VARCHAR(255) NULL COMMENT '价格（可空，待报价后再填）'"
+        )
+    }
     await seq.query("UPDATE orders SET inbound_status = 10, settlement_status = 10 WHERE status = 1 AND (inbound_status IS NULL OR settlement_status IS NULL OR settlement_status = 0)")
     await seq.query("UPDATE orders SET inbound_status = 20, settlement_status = 30 WHERE status = 2 AND (inbound_status IS NULL OR settlement_status IS NULL OR settlement_status = 0)")
     await seq.query("UPDATE orders SET inbound_status = 20, settlement_status = 40 WHERE status = 3 AND (inbound_status IS NULL OR settlement_status IS NULL OR settlement_status = 0)")

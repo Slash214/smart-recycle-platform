@@ -28,7 +28,16 @@
 			"path": "pages/order-list/order-list",
 			"style": {
 				"navigationBarTitleText": "订单列表",
-				"navigationBarBackgroundColor": "#fff"
+				"navigationBarBackgroundColor": "#eef2ff",
+				"navigationBarTextStyle": "black"
+			}
+		},
+		{
+			"path": "pages/order-detail/order-detail",
+			"style": {
+				"navigationBarTitleText": "订单详情",
+				"navigationBarBackgroundColor": "#eef2ff",
+				"navigationBarTextStyle": "black"
 			}
 		},
 		{

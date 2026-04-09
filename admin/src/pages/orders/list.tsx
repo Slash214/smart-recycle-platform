@@ -2,21 +2,42 @@ import {
   DateField,
   DeleteButton,
   EditButton,
+  NumberField,
   List,
   ShowButton,
   useTable,
 } from "@refinedev/antd";
-import { type BaseRecord } from "@refinedev/core";
-import { Space, Table, Tag, Select, Button, Input, DatePicker } from "antd";
+import { type BaseRecord, useUpdate } from "@refinedev/core";
+import { Space, Table, Tag, Select, Button, Input, DatePicker, message, Modal, Form, InputNumber, Typography } from "antd";
 import React from "react";
 import type { Dayjs } from "dayjs";
 const { RangePicker } = DatePicker;
+const { Text } = Typography;
+
+const INBOUND_OPTIONS = [
+  { label: "待入库", value: 10 },
+  { label: "已入库", value: 20 },
+];
+
+const SETTLEMENT_OPTIONS = [
+  { label: "待报价", value: 10 },
+  { label: "已报价", value: 20 },
+  { label: "待结算", value: 30 },
+  { label: "已结算", value: 40 },
+  { label: "退货中", value: 50 },
+];
 
 export const OrderList = () => {
   const [inboundStatus, setInboundStatus] = React.useState<number | undefined>(undefined);
   const [settlementStatus, setSettlementStatus] = React.useState<number | undefined>(undefined);
   const [keyword, setKeyword] = React.useState<string>("");
   const [range, setRange] = React.useState<[Dayjs, Dayjs] | null>(null);
+  const [statusUpdatingKey, setStatusUpdatingKey] = React.useState<string | null>(null);
+  const [quoteModalOpen, setQuoteModalOpen] = React.useState(false);
+  const [pendingQuoteTarget, setPendingQuoteTarget] = React.useState<{ record: BaseRecord; nextStatus: number } | null>(null);
+  const [quoteForm] = Form.useForm<{ price: number }>();
+
+  const { mutate: updateOrder } = useUpdate();
 
   const { tableProps, setFilters } = useTable({
     syncWithLocation: true,
@@ -39,15 +60,59 @@ export const OrderList = () => {
     setFilters(next, "replace");
   };
 
-  const getInboundStatusTag = (status: number) => {
-    switch (status) {
-      case 10:
-        return <Tag color="gold">待入库</Tag>;
-      case 20:
-        return <Tag color="blue">已入库</Tag>;
-      default:
-        return <Tag color="default">未知</Tag>;
-    }
+  const patchOrderStatus = (
+    record: BaseRecord,
+    field: "inbound_status" | "settlement_status",
+    value: number,
+    extraValues?: Record<string, unknown>,
+    onDone?: () => void
+  ) => {
+    const key = `${record.id}-${field}`;
+    setStatusUpdatingKey(key);
+    updateOrder(
+      {
+        resource: "orders",
+        id: record.id as string | number,
+        values: { [field]: value, ...(extraValues || {}) },
+      },
+      {
+        onSuccess: () => {
+          message.success(field === "inbound_status" ? "入库状态已更新" : "结算状态已更新");
+          onDone?.();
+        },
+        onError: (err) => {
+          message.error((err as { message?: string })?.message || "更新失败");
+        },
+        onSettled: () => setStatusUpdatingKey(null),
+      }
+    );
+  };
+
+  const openQuoteModal = (record: BaseRecord, nextStatus: number) => {
+    const currentPrice = Number(record.price);
+    quoteForm.setFieldsValue({
+      price: Number.isFinite(currentPrice) ? currentPrice : undefined,
+    });
+    setPendingQuoteTarget({ record, nextStatus });
+    setQuoteModalOpen(true);
+  };
+
+  const closeQuoteModal = () => {
+    setQuoteModalOpen(false);
+    setPendingQuoteTarget(null);
+    quoteForm.resetFields();
+  };
+
+  const submitQuoteAndStatus = async () => {
+    const values = await quoteForm.validateFields();
+    if (!pendingQuoteTarget) return;
+    patchOrderStatus(
+      pendingQuoteTarget.record,
+      "settlement_status",
+      pendingQuoteTarget.nextStatus,
+      { price: String(values.price) },
+      closeQuoteModal
+    );
   };
 
   const getTypeTag = (method: number) => {
@@ -56,23 +121,6 @@ export const OrderList = () => {
         return <Tag color="blue">上门</Tag>;
       case 2:
         return <Tag color="green">邮寄</Tag>;
-      default:
-        return <Tag color="default">未知</Tag>;
-    }
-  };
-
-  const getSettlementStatusTag = (status: number) => {
-    switch (status) {
-      case 10:
-        return <Tag color="gold">待报价</Tag>;
-      case 20:
-        return <Tag color="cyan">已报价</Tag>;
-      case 30:
-        return <Tag color="orange">待结算</Tag>;
-      case 40:
-        return <Tag color="green">已结算</Tag>;
-      case 50:
-        return <Tag color="red">退货中</Tag>;
       default:
         return <Tag color="default">未知</Tag>;
     }
@@ -151,6 +199,18 @@ export const OrderList = () => {
         />
 
         <Table.Column dataIndex="nums" title={"数量"} width={80} render={(value: number) => value || 0} />
+
+        <Table.Column
+          dataIndex="price"
+          title={"结算价"}
+          width={110}
+          render={(value: number | string | null) => {
+            if (value === null || value === undefined || String(value).trim() === "") return "--";
+            const n = Number(value);
+            if (!Number.isFinite(n)) return String(value);
+            return <NumberField value={n} options={{ minimumFractionDigits: 2, maximumFractionDigits: 2 }} />;
+          }}
+        />
         
         <Table.Column
           dataIndex="type"
@@ -183,15 +243,41 @@ export const OrderList = () => {
         <Table.Column
           dataIndex="inbound_status"
           title={"入库状态"}
-          width={100}
-          render={(value: number) => getInboundStatusTag(value)}
+          width={130}
+          render={(value: number, record: BaseRecord) => (
+            <Select
+              size="small"
+              style={{ minWidth: 108 }}
+              value={value}
+              options={INBOUND_OPTIONS}
+              loading={statusUpdatingKey === `${record.id}-inbound_status`}
+              disabled={statusUpdatingKey === `${record.id}-inbound_status`}
+              onChange={(v) => patchOrderStatus(record, "inbound_status", v)}
+            />
+          )}
         />
 
         <Table.Column
           dataIndex="settlement_status"
           title={"结算状态"}
-          width={110}
-          render={(value: number) => getSettlementStatusTag(value)}
+          width={130}
+          render={(value: number, record: BaseRecord) => (
+            <Select
+              size="small"
+              style={{ minWidth: 108 }}
+              value={value}
+              options={SETTLEMENT_OPTIONS}
+              loading={statusUpdatingKey === `${record.id}-settlement_status`}
+              disabled={statusUpdatingKey === `${record.id}-settlement_status`}
+              onChange={(v) => {
+                if (v >= 20) {
+                  openQuoteModal(record, v);
+                  return;
+                }
+                patchOrderStatus(record, "settlement_status", v);
+              }}
+            />
+          )}
         />
         
         <Table.Column
@@ -217,6 +303,41 @@ export const OrderList = () => {
           )}
         />
       </Table>
+
+      <Modal
+        title="设置结算价格"
+        open={quoteModalOpen}
+        onOk={submitQuoteAndStatus}
+        onCancel={closeQuoteModal}
+        okText="确认更新"
+        cancelText="取消"
+        confirmLoading={statusUpdatingKey === `${pendingQuoteTarget?.record?.id}-settlement_status`}
+        destroyOnClose
+      >
+        <Form form={quoteForm} layout="vertical">
+          <Form.Item label="订单数量">
+            <Text>{pendingQuoteTarget?.record?.nums || 0} 件</Text>
+          </Form.Item>
+          <Form.Item
+            label="结算总价"
+            name="price"
+            rules={[
+              { required: true, message: "请输入结算总价" },
+              { type: "number", min: 0, message: "价格不能小于 0" },
+            ]}
+          >
+            <InputNumber
+              style={{ width: "100%" }}
+              min={0}
+              precision={2}
+              placeholder="请输入结算总价，例如 199.00"
+            />
+          </Form.Item>
+          <Text type="secondary">
+            多商品场景当前按订单总价结算。若后续需要按每件单独定价，需要扩展订单明细模型。
+          </Text>
+        </Form>
+      </Modal>
     </List>
   );
 };

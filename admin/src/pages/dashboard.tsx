@@ -36,6 +36,7 @@ interface Activity {
 interface ApiResponse<T> {
   code: number;
   data: T;
+  message?: string;
 }
 
 export const Dashboard = () => {
@@ -46,62 +47,42 @@ export const Dashboard = () => {
     totalProducts: 0,
   });
   const [statsLoading, setStatsLoading] = useState(true);
-  
-  const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [miniUsers, setMiniUsers] = useState<Record<string, number>>({});
 
-  // 获取统计数据
+  // 统一使用 mini-users 统计接口，避免 dashboard 接口依赖历史表导致 500
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchMiniStats = async () => {
       try {
         setStatsLoading(true);
-        const response = await fetch(`${API_URL}/admin/stats/dashboard`, {
-          headers: getAuthHeaders(false),
-        });
-        const result: ApiResponse<DashboardStats> = await response.json();
-        if (import.meta.env.DEV) {
-          console.log('统计数据响应:', result);
-        }
-        if (result.code === 200 && result.data) {
-          setStats(result.data);
-        }
-      } catch (error) {
-        if (import.meta.env.DEV) {
-          console.error('获取统计数据失败:', error);
-        }
-      } finally {
-        setStatsLoading(false);
-      }
-    };
-    fetchStats();
-  }, []);
-
-  // 获取小程序用户专项统计
-  useEffect(() => {
-    const fetchMiniUsers = async () => {
-      try {
         setActivitiesLoading(true);
         const response = await fetch(`${API_URL}/admin/stats/mini-users`, {
           headers: getAuthHeaders(false),
         });
         const result: ApiResponse<Record<string, number>> = await response.json();
         if (import.meta.env.DEV) {
-          console.log('小程序用户统计响应:', result);
+          console.log('mini-users 统计响应:', result);
         }
         if (result.code === 200 && result.data) {
-          setMiniUsers(result.data || {});
-          setRecentActivities([]);
+          const d = result.data || {};
+          setMiniUsers(d);
+          setStats({
+            totalUsers: d.totalUsers || 0,
+            totalOrders: d.totalOrders || 0,
+            totalRevenue: 0, // 该接口暂未返回收入字段
+            totalProducts: d.viewedBrandCount || 0,
+          });
         }
       } catch (error) {
         if (import.meta.env.DEV) {
-          console.error('获取小程序用户统计失败:', error);
+          console.error('获取 mini-users 统计失败:', error);
         }
       } finally {
+        setStatsLoading(false);
         setActivitiesLoading(false);
       }
     };
-    fetchMiniUsers();
+    fetchMiniStats();
   }, []);
 
 

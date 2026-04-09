@@ -11,15 +11,30 @@ export const OrderCreate = () => {
       <Form 
         {...formProps} 
         layout="vertical"
+        initialValues={{
+          devices: [{ model: "", memory: "", unit: "whole", qty: 1 }],
+        }}
         onFinish={(values: any) => {
+          const deviceRows = Array.isArray(values.devices)
+            ? values.devices
+                .filter((d: { model?: string }) => d && String(d.model || "").trim())
+                .map((d: { model?: string; memory?: string; unit?: string; qty?: number }) => ({
+                  model: String(d.model || "").trim(),
+                  memory: String(d.memory || "").trim(),
+                  unit: d.unit === "board" ? "board" : "whole",
+                  qty: Number(d.qty) || 0,
+                }))
+            : [];
+          const numsFromDevices = deviceRows.length > 0 ? deviceRows.reduce((s: number, d: { qty: number }) => s + d.qty, 0) : Number(values.nums || 0);
           const submitData = {
             ...values,
-            nums: Number(values.nums || 0),
+            nums: numsFromDevices,
             type: Number(values.type || 1),
             way: Number(values.way || 1),
             inbound_status: Number(values.inbound_status || 10),
             settlement_status: Number(values.settlement_status || 10),
             remark_images: Array.isArray(values.remark_images) ? values.remark_images : [],
+            devices: deviceRows,
           };
           return formProps.onFinish?.(submitData);
         }}
@@ -50,8 +65,44 @@ export const OrderCreate = () => {
               message: "请输入数量",
             },
           ]}
+          extra="填写回收明细后将按明细数量汇总；也可只填数量、不填明细"
         >
           <InputNumber min={1} style={{ width: "100%" }} placeholder="请输入数量" />
+        </Form.Item>
+
+        <Form.Item label="回收明细（可选）">
+          <Form.List name="devices">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Space key={key} wrap style={{ marginBottom: 8 }} align="start">
+                    <Form.Item {...restField} name={[name, "model"]}>
+                      <Input placeholder="机型" style={{ width: 120 }} />
+                    </Form.Item>
+                    <Form.Item {...restField} name={[name, "memory"]}>
+                      <Input placeholder="内存" style={{ width: 100 }} />
+                    </Form.Item>
+                    <Form.Item {...restField} name={[name, "unit"]} initialValue="whole">
+                      <Select
+                        style={{ width: 100 }}
+                        options={[
+                          { value: "whole", label: "整机" },
+                          { value: "board", label: "单板" },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item {...restField} name={[name, "qty"]}>
+                      <InputNumber min={1} style={{ width: 90 }} placeholder="数量" />
+                    </Form.Item>
+                    <MinusCircleOutlined onClick={() => remove(name)} />
+                  </Space>
+                ))}
+                <Button type="dashed" onClick={() => add({ model: "", memory: "", unit: "whole", qty: 1 })} block icon={<PlusOutlined />}>
+                  添加明细行
+                </Button>
+              </>
+            )}
+          </Form.List>
         </Form.Item>
 
         <Form.Item
@@ -90,6 +141,59 @@ export const OrderCreate = () => {
               { value: 3, label: "银行卡收款" },
             ]}
           />
+        </Form.Item>
+
+        <Form.Item noStyle shouldUpdate={(prev, cur) => prev.way !== cur.way}>
+          {({ getFieldValue }) => {
+            const way = Number(getFieldValue("way") || 1);
+            if (way === 1) {
+              return (
+                <Form.Item
+                  label="微信收款账号"
+                  name={["wechat_account"]}
+                  rules={[{ required: true, message: "请输入微信收款账号" }]}
+                >
+                  <Input placeholder="微信号或绑定手机号" />
+                </Form.Item>
+              );
+            }
+            if (way === 2) {
+              return (
+                <Form.Item
+                  label="支付宝账号"
+                  name={["alipay_account"]}
+                  rules={[{ required: true, message: "请输入支付宝账号" }]}
+                >
+                  <Input placeholder="支付宝账号" />
+                </Form.Item>
+              );
+            }
+            return (
+              <>
+                <Form.Item
+                  label="收款人姓名"
+                  name={["payee_name"]}
+                  rules={[{ required: true, message: "请输入收款人姓名" }]}
+                >
+                  <Input placeholder="持卡人姓名" />
+                </Form.Item>
+                <Form.Item
+                  label="开户行"
+                  name={["bank_name"]}
+                  rules={[{ required: true, message: "请输入开户行" }]}
+                >
+                  <Input placeholder="银行名称" />
+                </Form.Item>
+                <Form.Item
+                  label="银行卡号"
+                  name={["bank_card_no"]}
+                  rules={[{ required: true, message: "请输入银行卡号" }]}
+                >
+                  <Input placeholder="银行卡号" />
+                </Form.Item>
+              </>
+            );
+          }}
         </Form.Item>
 
         <Form.Item

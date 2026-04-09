@@ -149,6 +149,7 @@ const RESOURCE_ENDPOINT_MAP: Record<string, string> = {
   "product-types": "types",
   "store-addresses": "addresses",
   "users": "admin/users",
+  "order-returns": "orders/returns",
 };
 
 const toEndpoint = (resource: string): string => RESOURCE_ENDPOINT_MAP[resource] ?? resource;
@@ -286,7 +287,11 @@ export const customDataProvider: DataProvider = {
       }
       
       const endpoint = toEndpoint(resource);
-      const url = `${API_URL}/${endpoint}/${id}`;
+      // 退货审核接口是 /orders/returns/:id/audit，不走通用 /:id 更新
+      const url =
+        resource === "order-returns"
+          ? `${API_URL}/${endpoint}/${id}/audit`
+          : `${API_URL}/${endpoint}/${id}`;
       
       const res = await fetch(url, {
         method: "PUT",

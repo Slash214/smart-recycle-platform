@@ -1,8 +1,13 @@
 <template>
-    <view class="order-card" @click="goDetail">
+    <view :class="['order-card', selected ? 'selected' : '']" @click="handleClick">
         <view class="header">
             <text class="courier">{{ order.express_company || '-' }}</text>
-            <text class="status">{{ statusText }}</text>
+            <view class="header-right">
+                <text class="status">{{ statusText }}</text>
+                <text v-if="selectable" :class="['pick-tag', selected ? 'on' : '']">
+                    {{ selected ? '已选择' : '可选择' }}
+                </text>
+            </view>
         </view>
         <view class="content">
             <view class="row">
@@ -16,6 +21,10 @@
             <view class="row">
                 <text class="label">数量：</text>
                 <text class="value">{{ order.nums || 0 }}</text>
+            </view>
+            <view v-if="deviceSummary" class="row device-summary-row">
+                <text class="label">明细：</text>
+                <text class="value summary">{{ deviceSummary }}</text>
             </view>
             <view class="row price-row">
                 <text class="label">收款方式：</text>
@@ -43,10 +52,16 @@ interface Order {
     inbound_status: number
     settlement_status: number
     createdAt: string
+    devices?: Array<{ model?: string; memory?: string; unit?: string; qty?: number }>
 }
 
 const props = defineProps<{
     order: Order
+    selectable?: boolean
+    selected?: boolean
+}>()
+const emit = defineEmits<{
+    (e: 'choose', id: number): void
 }>()
 
 const statusText = computed(() => {
@@ -64,6 +79,17 @@ const statusText = computed(() => {
         default:
             return '未知状态'
     }
+})
+
+const deviceSummary = computed(() => {
+    const ds = props.order.devices
+    if (!Array.isArray(ds) || !ds.length) return ''
+    return ds
+        .map((d) => {
+            const u = d.unit === 'board' ? '单板' : '整机'
+            return `${d.model || '-'} ${d.memory || '-'} ${u}×${d.qty ?? 0}`
+        })
+        .join('；')
 })
 
 const payWayText = computed(() => {
@@ -94,6 +120,14 @@ const goDetail = () => {
         url: `/pages/order-detail/order-detail?id=${props.order.id}`,
     })
 }
+
+const handleClick = () => {
+    if (props.selectable) {
+        emit('choose', props.order.id)
+        return
+    }
+    goDetail()
+}
 </script>
 
 <style scoped lang="scss">
@@ -122,6 +156,12 @@ const goDetail = () => {
     border-bottom: 1rpx solid $recycle-border-light;
 }
 
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 10rpx;
+}
+
 .courier {
     font-size: 36rpx;
     font-weight: 700;
@@ -137,6 +177,20 @@ const goDetail = () => {
     background: $recycle-accent-soft;
     border-radius: 8rpx;
     border: 1rpx solid $recycle-accent-muted;
+}
+
+.pick-tag {
+    font-size: 22rpx;
+    padding: 6rpx 12rpx;
+    border-radius: 8rpx;
+    border: 1rpx dashed $recycle-accent-muted;
+    color: $recycle-muted;
+}
+
+.pick-tag.on {
+    border-style: solid;
+    color: $recycle-accent-dark;
+    background: $recycle-accent-soft;
 }
 
 .content {
@@ -181,6 +235,15 @@ const goDetail = () => {
     font-size: 30rpx;
 }
 
+.device-summary-row {
+    align-items: flex-start;
+    .summary {
+        font-size: 24rpx;
+        line-height: 1.45;
+        word-break: break-all;
+    }
+}
+
 .footer {
     text-align: right;
     padding-top: 20rpx;
@@ -191,5 +254,10 @@ const goDetail = () => {
     font-size: 24rpx;
     color: $recycle-muted;
     line-height: 1.4;
+}
+
+.order-card.selected {
+    border-color: $recycle-accent;
+    background: #f3f6ff;
 }
 </style>

@@ -21,6 +21,7 @@ import {
     UserOutlined,
     ShoppingCartOutlined,
     SettingOutlined,
+    RollbackOutlined,
 } from '@ant-design/icons'
 import { APP_NAME } from './constants/app'
 
@@ -64,6 +65,7 @@ import {
 } from './pages/store-addresses'
 import { UserList, UserCreate, UserEdit, UserShow } from './pages/users'
 import { OrderList, OrderCreate, OrderEdit, OrderShow } from './pages/orders'
+import { OrderReturnList } from './pages/order-returns'
 import {
     ConfigList,
     ConfigCreate,
@@ -319,6 +321,14 @@ function App() {
                                         },
                                     },
                                     {
+                                        name: 'order-returns',
+                                        list: '/order-returns',
+                                        meta: {
+                                            label: '退货审核',
+                                            icon: <RollbackOutlined />,
+                                        },
+                                    },
+                                    {
                                         name: 'configs',
                                         list: '/configs',
                                         create: '/configs/create',
@@ -422,6 +432,10 @@ function App() {
                                             <Route path="create" element={<OrderCreate />} />
                                             <Route path="edit/:id" element={<OrderEdit />} />
                                             <Route path="show/:id" element={<OrderShow />} />
+                                        </Route>
+
+                                        <Route path="/order-returns">
+                                            <Route index element={<OrderReturnList />} />
                                         </Route>
 
                                         {/* 系统配置管理 */}

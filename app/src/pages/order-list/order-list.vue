@@ -21,17 +21,31 @@
             </view>
         </scroll-view>
         <view class="container">
-            <order-card v-for="item in list" :key="item.id" :order="item"></order-card>
+            <view v-if="isReturnPickMode && list.length" class="pick-tip">请选择一个已结算订单发起退货</view>
+            <order-card
+                v-for="item in list"
+                :key="item.id"
+                :order="item"
+                :selectable="isReturnPickMode"
+                :selected="selectedReturnOrderId === item.id"
+                @choose="onChooseReturnOrder"
+            ></order-card>
             <empty-state v-if="!list.length && !loading" tip="空空如也"></empty-state>
             <view v-if="loading" class="loading-text">加载中...</view>
             <view v-if="!hasMore && list.length" class="loading-text">没有更多了</view>
         </view>
-        <view v-if="mainTab === 1" class="bottom-btn">我要退货</view>
+        <view
+            v-if="isReturnPickMode"
+            :class="['bottom-btn', !selectedReturnOrderId ? 'disabled' : '']"
+            @click="goApplyReturnFromList"
+        >
+            {{ selectedReturnOrderId ? '申请退货' : '请选择一个订单' }}
+        </view>
     </view>
 </template>
 
 <script lang="ts" setup>
-import { onLoad, onPullDownRefresh, onReachBottom } from '@dcloudio/uni-app'
+import { onLoad, onPullDownRefresh, onReachBottom, onShow } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
 import { getOrderList } from '@/apis'
 import OrderCard from '@/components/OrderCard.vue'
@@ -56,6 +70,8 @@ const page = ref(1)
 const pageSize = 20
 const loading = ref(false)
 const hasMore = ref(true)
+const selectedReturnOrderId = ref<number | null>(null)
+const initialized = ref(false)
 
 const mainTab = ref(0)
 const currentSubTab = ref('pendingInbound')
@@ -71,6 +87,7 @@ const settlementTabs = [
     { id: 'returning', name: '退货中' },
 ]
 const currentSubTabs = computed(() => (mainTab.value === 0 ? inboundTabs : settlementTabs))
+const isReturnPickMode = computed(() => mainTab.value === 1 && currentSubTab.value === 'settled')
 
 /** 后端 list 接口的 data 直接是数组；兼容 { list/data/rows } 包裹形态 */
 function normalizeOrderRows(payload: unknown): Order[] {
@@ -120,6 +137,7 @@ const fetchOrders = async (reset = true) => {
         const data = await getOrderList(buildQuery() as any)
         const rows = normalizeOrderRows(data)
         list.value = reset ? rows : [...list.value, ...rows]
+        if (reset) selectedReturnOrderId.value = null
         hasMore.value = rows.length >= pageSize
         if (rows.length >= pageSize) page.value += 1
     } finally {
@@ -136,7 +154,21 @@ const handleMainTabClick = (e: any) => {
 
 const onSubTabChange = (id: string) => {
     currentSubTab.value = id
+    selectedReturnOrderId.value = null
     fetchOrders(true)
+}
+
+const onChooseReturnOrder = (id: number) => {
+    if (!isReturnPickMode.value) return
+    selectedReturnOrderId.value = selectedReturnOrderId.value === id ? null : id
+}
+
+const goApplyReturnFromList = () => {
+    if (!selectedReturnOrderId.value) {
+        uni.showToast({ title: '请先选择一个已结算订单', icon: 'none' })
+        return
+    }
+    uni.navigateTo({ url: `/pages/order-detail/order-detail?id=${selectedReturnOrderId.value}` })
 }
 
 onLoad((options) => {
@@ -151,6 +183,13 @@ onLoad((options) => {
         mainTab.value = 0
         currentSubTab.value = 'pendingInbound'
     }
+    fetchOrders(true)
+    initialized.value = true
+})
+
+onShow(() => {
+    // 从详情页/申请页返回后自动刷新状态
+    if (!initialized.value) return
     fetchOrders(true)
 })
 
@@ -252,6 +291,16 @@ onReachBottom(async () => {
     min-height: 60vh;
 }
 
+.pick-tip {
+    margin-bottom: 14rpx;
+    padding: 14rpx 16rpx;
+    border-radius: 12rpx;
+    border: 1rpx solid $recycle-accent-muted;
+    background: $recycle-accent-soft;
+    font-size: 24rpx;
+    color: $recycle-accent-dark;
+}
+
 .bottom-btn {
     position: fixed;
     bottom: 26rpx;
@@ -267,6 +316,11 @@ onReachBottom(async () => {
     font-size: 34rpx;
     font-weight: 600;
     border: 1rpx solid $recycle-accent-dark;
+}
+
+.bottom-btn.disabled {
+    background: #b8c4f0;
+    border-color: #9cacdf;
 }
 
 .loading-text {

@@ -201,6 +201,24 @@ export const OrderList = () => {
         <Table.Column dataIndex="nums" title={"数量"} width={80} render={(value: number) => value || 0} />
 
         <Table.Column
+          title={"回收明细"}
+          width={240}
+          ellipsis
+          render={(_: unknown, record: BaseRecord) => {
+            const devices = record.devices as Array<{ model?: string; memory?: string; unit?: string; qty?: number }> | undefined;
+            if (!devices || !devices.length) return <Text type="secondary">-</Text>;
+            const text = devices
+              .map((d) => `${d.model || "-"} ${d.memory || "-"} ${d.unit === "board" ? "单板" : "整机"}×${d.qty ?? 0}`)
+              .join("；");
+            return (
+              <span title={text} style={{ fontSize: 12 }}>
+                {text}
+              </span>
+            );
+          }}
+        />
+
+        <Table.Column
           dataIndex="price"
           title={"结算价"}
           width={110}
@@ -224,6 +242,22 @@ export const OrderList = () => {
           title={"收款方式"}
           width={120}
           render={(value: number) => getWayTag(value)}
+        />
+
+        <Table.Column
+          title={"收款信息"}
+          width={180}
+          ellipsis
+          render={(_: unknown, record: BaseRecord) => {
+            const way = Number(record.way || 1);
+            let text = "-";
+            if (way === 1) text = String(record.wechat_account || "-");
+            if (way === 2) text = String(record.alipay_account || "-");
+            if (way === 3) {
+              text = [record.payee_name, record.bank_name, record.bank_card_no].filter(Boolean).join(" / ") || "-";
+            }
+            return <span title={text}>{text}</span>;
+          }}
         />
         
         <Table.Column
@@ -334,7 +368,7 @@ export const OrderList = () => {
             />
           </Form.Item>
           <Text type="secondary">
-            多商品场景当前按订单总价结算。若后续需要按每件单独定价，需要扩展订单明细模型。
+            当前按订单「结算总价」填写；回收明细已单独落库，便于核对件数与机型。
           </Text>
         </Form>
       </Modal>

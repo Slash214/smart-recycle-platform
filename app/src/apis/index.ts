@@ -13,14 +13,28 @@ export const getAddressList = () => {
 }
 
 
+export interface MiniOrderDeviceLine {
+	model: string
+	memory: string
+	unit: 'whole' | 'board'
+	qty: number
+}
+
 export interface MiniOrderPayload {
 	nums: number
 	phone: string
 	type: 1 | 2
 	way: 1 | 2 | 3
+	payee_name?: string
+	wechat_account?: string
+	alipay_account?: string
+	bank_name?: string
+	bank_card_no?: string
 	tracking_number?: string
 	express_company?: string
 	remark?: string
+	/** 回收明细（与 nums 一致时由服务端落库 order_devices） */
+	devices?: MiniOrderDeviceLine[]
 	remark_images?: string[]
 	status?: 1 | 2 | 3
 	inbound_status?: 10 | 20
@@ -34,6 +48,7 @@ export const createOrder = (data: MiniOrderPayload) => {
 		type: Number(data.type) as 1 | 2,
 		way: Number(data.way) as 1 | 2 | 3,
 		status: data.status === undefined ? undefined : (Number(data.status) as 1 | 2 | 3),
+		devices: Array.isArray(data.devices) ? data.devices : undefined,
 		remark_images: Array.isArray(data.remark_images)
 			? data.remark_images.map((item) => String(item)).filter((item) => !!item)
 			: [],
@@ -62,6 +77,25 @@ export const getOrderDetail = (id: number) => {
 
 export const updateOrder = (id: number, data: Partial<MiniOrderPayload>) => {
 	return put(`/v1/orders/${id}`, data)
+}
+
+export interface MiniOrderReturnItem {
+	id: number
+	order_id: number
+	userid: string
+	reason: string
+	status: 10 | 20 | 30
+	reject_reason?: string
+	audit_at?: string
+	createdAt?: string
+}
+
+export const applyOrderReturn = (id: number, data: { reason: string }) => {
+	return post<MiniOrderReturnItem>(`/v1/orders/${id}/return-apply`, data)
+}
+
+export const getOrderReturnLatest = (id: number) => {
+	return get<MiniOrderReturnItem | null>(`/v1/orders/${id}/return-latest`)
 }
 
 export const uploadImageFile = async (filePath: string) => {

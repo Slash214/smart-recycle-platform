@@ -16,10 +16,47 @@
 
         <view class="card pay-card">
             <view class="pay-label">收款方式</view>
-            <view class="pay-value-wrap">
+            <view class="pay-value-wrap" @click="choosePayMethod">
                 <text :class="['pay-text', payMethodText ? 'active' : '']">{{
                     payMethodText || '请选择收款方式'
                 }}</text>
+                <wd-icon name="arrow-right" size="16px" color="#888"></wd-icon>
+            </view>
+        </view>
+
+        <view class="card pay-card">
+            <view class="pay-label">收款信息</view>
+            <view v-if="payMethodRef === 1" class="field no-margin">
+                <view class="label required">微信收款账号</view>
+                <view class="input-wrap">
+                    <input v-model.trim="wechatAccountRef" class="native-input" placeholder="请输入微信号或绑定手机号" />
+                </view>
+            </view>
+            <view v-else-if="payMethodRef === 2" class="field no-margin">
+                <view class="label required">支付宝账号</view>
+                <view class="input-wrap">
+                    <input v-model.trim="alipayAccountRef" class="native-input" placeholder="请输入支付宝账号" />
+                </view>
+            </view>
+            <view v-else class="bank-fields">
+                <view class="field">
+                    <view class="label required">收款人姓名</view>
+                    <view class="input-wrap">
+                        <input v-model.trim="payeeNameRef" class="native-input" placeholder="请输入持卡人姓名" />
+                    </view>
+                </view>
+                <view class="field">
+                    <view class="label required">开户行</view>
+                    <view class="input-wrap">
+                        <input v-model.trim="bankNameRef" class="native-input" placeholder="请输入银行名称" />
+                    </view>
+                </view>
+                <view class="field no-margin">
+                    <view class="label required">银行卡号</view>
+                    <view class="input-wrap">
+                        <input v-model.trim="bankCardNoRef" class="native-input" type="number" placeholder="请输入银行卡号" />
+                    </view>
+                </view>
             </view>
         </view>
 
@@ -42,15 +79,67 @@
                 </view>
             </view>
 
-            <view class="field">
-                <view class="label required">货物数量</view>
-                <view class="input-wrap">
-                    <input
-                        v-model="countRef"
-                        class="native-input"
-                        type="number"
-                        placeholder="输入寄出的机器数量"
-                    />
+            <view class="field device-block">
+                <view class="label required">回收明细</view>
+                <text class="hint">填写机型、内存、整机或单板与数量；价格由仓库收货后填写</text>
+                <view
+                    v-for="(line, index) in deviceLines"
+                    :key="line.id"
+                    class="device-card"
+                >
+                    <view class="device-card-head">
+                        <text class="device-index">第 {{ index + 1 }} 条</text>
+                        <text
+                            v-if="deviceLines.length > 1"
+                            class="device-remove"
+                            @click="removeDeviceLine(index)"
+                        >
+                            删除
+                        </text>
+                    </view>
+                    <view class="device-grid">
+                        <view class="device-cell">
+                            <text class="sub-label">机型</text>
+                            <input
+                                v-model="line.model"
+                                class="device-input"
+                                placeholder="如：苹果"
+                            />
+                        </view>
+                        <view class="device-cell">
+                            <text class="sub-label">内存</text>
+                            <input
+                                v-model="line.memory"
+                                class="device-input"
+                                placeholder="如：8G"
+                            />
+                        </view>
+                        <view class="device-cell">
+                            <text class="sub-label">类型</text>
+                            <view class="device-input picker-like" @click="chooseUnitType(index)">
+                                <text :class="['picker-txt', line.unitType ? 'on' : '']">
+                                    {{ unitTypeLabel(line.unitType) }}
+                                </text>
+                                <wd-icon name="arrow-right" size="14px" color="#888"></wd-icon>
+                            </view>
+                        </view>
+                        <view class="device-cell">
+                            <text class="sub-label">数量</text>
+                            <input
+                                v-model="line.qty"
+                                class="device-input"
+                                type="number"
+                                placeholder="数量"
+                            />
+                        </view>
+                    </view>
+                </view>
+                <view class="add-row" @click="addDeviceLine">
+                    <text class="add-plus">+</text>
+                    <text class="add-txt">添加一条</text>
+                </view>
+                <view v-if="totalDeviceQty > 0" class="total-qty">
+                    合计数量：<text class="num">{{ totalDeviceQty }}</text> 件
                 </view>
             </view>
 
@@ -102,8 +191,32 @@ const payMethodList = [
 ]
 const courierList = ['顺丰快递', '京东快递', '中通快递', '圆通快递']
 
+/** 回收明细一行：机型 + 内存 + 整机/单板 + 数量（价格后台填，此处不传） */
+interface DeviceLine {
+    id: string
+    model: string
+    memory: string
+    unitType: 'whole' | 'board' | ''
+    qty: string
+}
+
+function createDeviceLine(): DeviceLine {
+    return {
+        id: `${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+        model: '',
+        memory: '',
+        unitType: 'whole',
+        qty: '',
+    }
+}
+
 const payMethodRef = ref<1 | 2 | 3>(1)
-const countRef = ref('')
+const payeeNameRef = ref('')
+const wechatAccountRef = ref('')
+const alipayAccountRef = ref('')
+const bankNameRef = ref('')
+const bankCardNoRef = ref('')
+const deviceLines = ref<DeviceLine[]>([createDeviceLine()])
 const remarkRef = ref('')
 const courierRef = ref('顺丰快递')
 const trackingNumberRef = ref('')
@@ -111,6 +224,52 @@ const remarkImageRef = ref('')
 const payMethodText = computed(() => {
     return payMethodList.find((item) => item.value === payMethodRef.value)?.label || ''
 })
+
+const totalDeviceQty = computed(() => {
+    return deviceLines.value.reduce((sum, line) => {
+        const n = parseInt(String(line.qty || '').trim(), 10)
+        return sum + (Number.isFinite(n) && n > 0 ? n : 0)
+    }, 0)
+})
+
+function unitTypeLabel(u: DeviceLine['unitType']) {
+    if (u === 'board') return '单板'
+    if (u === 'whole') return '整机'
+    return '请选择'
+}
+
+function addDeviceLine() {
+    deviceLines.value.push(createDeviceLine())
+}
+
+function removeDeviceLine(index: number) {
+    if (deviceLines.value.length <= 1) return
+    deviceLines.value.splice(index, 1)
+}
+
+function chooseUnitType(index: number) {
+    uni.showActionSheet({
+        itemList: ['整机', '单板'],
+        success: (res) => {
+            const line = deviceLines.value[index]
+            if (!line) return
+            line.unitType = res.tapIndex === 1 ? 'board' : 'whole'
+        },
+    })
+}
+
+function validateDeviceLines(): string | null {
+    for (let i = 0; i < deviceLines.value.length; i++) {
+        const l = deviceLines.value[i]
+        const row = i + 1
+        if (!l.model.trim()) return `请填写第 ${row} 条的机型`
+        if (!l.memory.trim()) return `请填写第 ${row} 条的内存`
+        if (!l.unitType) return `请选择第 ${row} 条的整机/单板`
+        const q = parseInt(String(l.qty).trim(), 10)
+        if (!Number.isFinite(q) || q < 1) return `请填写第 ${row} 条的合法数量`
+    }
+    return null
+}
 
 const addressItem = ref<AddressItem>({
     id: 0,
@@ -178,8 +337,35 @@ const onSubmit = async () => {
         toast.warning('请填写快递单号')
         return
     }
-    if (!countRef.value) {
-        toast.warning('请输入货物数量')
+    if (payMethodRef.value === 1 && !wechatAccountRef.value.trim()) {
+        toast.warning('请填写微信收款账号')
+        return
+    }
+    if (payMethodRef.value === 2 && !alipayAccountRef.value.trim()) {
+        toast.warning('请填写支付宝账号')
+        return
+    }
+    if (payMethodRef.value === 3) {
+        if (!payeeNameRef.value.trim()) {
+            toast.warning('请填写收款人姓名')
+            return
+        }
+        if (!bankNameRef.value.trim()) {
+            toast.warning('请填写开户行')
+            return
+        }
+        if (!bankCardNoRef.value.trim()) {
+            toast.warning('请填写银行卡号')
+            return
+        }
+    }
+    const lineErr = validateDeviceLines()
+    if (lineErr) {
+        toast.warning(lineErr)
+        return
+    }
+    if (totalDeviceQty.value < 1) {
+        toast.warning('请至少填写一条回收明细的数量')
         return
     }
 
@@ -198,13 +384,24 @@ const onSubmit = async () => {
             ? [String(remarkImageRef.value).trim()].filter((item) => !!item)
             : []
         await createOrder({
-            nums: Number(countRef.value),
+            nums: totalDeviceQty.value,
             phone: String(contactPhone),
             type: 2,
             way: payMethodRef.value,
+            payee_name: payeeNameRef.value.trim(),
+            wechat_account: wechatAccountRef.value.trim(),
+            alipay_account: alipayAccountRef.value.trim(),
+            bank_name: bankNameRef.value.trim(),
+            bank_card_no: bankCardNoRef.value.trim(),
             tracking_number: String(trackingNumberRef.value).trim(),
             express_company: String(courierRef.value).trim(),
             remark: String(remarkRef.value || '').trim(),
+            devices: deviceLines.value.map((l) => ({
+                model: l.model.trim(),
+                memory: l.memory.trim(),
+                unit: l.unitType === 'board' ? ('board' as const) : ('whole' as const),
+                qty: parseInt(String(l.qty).trim(), 10) || 0,
+            })),
             remark_images: cleanedRemarkImages,
             status: 1,
         })
@@ -250,20 +447,21 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+@import '@/styles/recycle-ui.scss';
+
 .container {
     padding: 24rpx;
     padding-bottom: calc(130rpx + env(safe-area-inset-bottom));
-    background: #f3f6fb;
+    background: $recycle-bg;
     min-height: 100vh;
 }
 
 .card {
     border-radius: 18rpx;
     padding: 24rpx;
-    background-color: #fff;
+    background-color: $recycle-surface;
     margin-bottom: 16rpx;
-    border: 1px solid #e7edf6;
-    box-shadow: 0 8rpx 20rpx rgba(15, 23, 42, 0.04);
+    border: 1rpx solid $recycle-border-light;
 }
 
 .address-card {
@@ -309,8 +507,8 @@ onUnmounted(() => {
         width: 56rpx;
         height: 56rpx;
         border-radius: 50%;
-        border: 1px solid #cfe0ff;
-        background: linear-gradient(180deg, #f8fbff 0%, #edf4ff 100%);
+        border: 1rpx solid $recycle-accent-muted;
+        background: $recycle-accent-soft;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -330,8 +528,8 @@ onUnmounted(() => {
     .pay-value-wrap {
         min-height: 56rpx;
         border-radius: 12rpx;
-        background: #f8fbff;
-        border: 1px solid #dbe7ff;
+        background: $recycle-accent-soft;
+        border: 1rpx solid $recycle-accent-muted;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -340,11 +538,15 @@ onUnmounted(() => {
     .pay-text {
         font-size: 32rpx;
         font-weight: 600;
-        color: #2563eb;
+        color: $recycle-accent;
         letter-spacing: 0;
     }
     .active {
         color: #0f172a;
+    }
+
+    .bank-fields .field {
+        margin-bottom: 14rpx;
     }
 }
 
@@ -374,7 +576,7 @@ onUnmounted(() => {
 
     .input-wrap {
         min-height: 76rpx;
-        border: 1px solid #dbe5f3;
+        border: 1rpx solid $recycle-border;
         border-radius: 12rpx;
         padding: 0 20rpx;
         display: flex;
@@ -402,16 +604,16 @@ onUnmounted(() => {
     }
 
     .upload-wrap {
-        border: 1px dashed #cfd9e8;
+        border: 1rpx dashed $recycle-border;
         border-radius: 12rpx;
         padding: 14rpx;
-        background: #fafcff;
+        background: $recycle-warm;
     }
 
     .upload-box {
         width: 120rpx;
         height: 120rpx;
-        background: #f3f6fb;
+        background: $recycle-bg;
         border-radius: 10rpx;
         overflow: hidden;
     }
@@ -427,18 +629,134 @@ onUnmounted(() => {
         align-items: center;
         justify-content: center;
     }
+
+    .device-block {
+        .hint {
+            display: block;
+            font-size: 22rpx;
+            color: $recycle-muted;
+            line-height: 1.45;
+            margin-bottom: 16rpx;
+        }
+    }
+
+    .device-card {
+        border: 1rpx solid $recycle-border-light;
+        border-radius: 14rpx;
+        padding: 20rpx;
+        margin-bottom: 16rpx;
+        background: $recycle-warm;
+    }
+
+    .device-card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16rpx;
+    }
+
+    .device-index {
+        font-size: 26rpx;
+        font-weight: 600;
+        color: $recycle-text;
+    }
+
+    .device-remove {
+        font-size: 24rpx;
+        color: #ef4444;
+        padding: 8rpx 12rpx;
+    }
+
+    .device-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16rpx 20rpx;
+    }
+
+    .device-cell {
+        min-width: 0;
+    }
+
+    .sub-label {
+        display: block;
+        font-size: 22rpx;
+        color: $recycle-text-secondary;
+        margin-bottom: 8rpx;
+    }
+
+    .device-input {
+        width: 100%;
+        height: 72rpx;
+        padding: 0 16rpx;
+        box-sizing: border-box;
+        border: 1rpx solid $recycle-border;
+        border-radius: 10rpx;
+        font-size: 28rpx;
+        color: $recycle-text;
+        background: $recycle-surface;
+    }
+
+    .picker-like {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .picker-txt {
+        font-size: 28rpx;
+        color: #9ca3af;
+        flex: 1;
+        &.on {
+            color: $recycle-text;
+        }
+    }
+
+    .add-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8rpx;
+        padding: 22rpx;
+        border-radius: 12rpx;
+        border: 1rpx dashed $recycle-accent-muted;
+        background: $recycle-surface;
+        margin-top: 4rpx;
+    }
+
+    .add-plus {
+        font-size: 40rpx;
+        font-weight: 300;
+        color: $recycle-accent;
+        line-height: 1;
+    }
+
+    .add-txt {
+        font-size: 28rpx;
+        color: $recycle-accent-dark;
+        font-weight: 500;
+    }
+
+    .total-qty {
+        margin-top: 16rpx;
+        font-size: 26rpx;
+        color: $recycle-text-secondary;
+        text-align: right;
+        .num {
+            color: $recycle-accent;
+            font-weight: 700;
+        }
+    }
 }
 
 .fix-bottom {
-    background-color: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(8px);
+    background-color: rgba(255, 255, 255, 0.98);
     height: auto;
     width: 100%;
     position: fixed;
     bottom: 0;
     left: 0;
     padding: 14rpx 0 calc(14rpx + env(safe-area-inset-bottom));
-    box-shadow: 0 -6rpx 20rpx rgba(15, 23, 42, 0.08);
+    border-top: 1rpx solid $recycle-border-light;
     .button {
         height: 80rpx;
         margin: 0 auto;
@@ -450,7 +768,8 @@ onUnmounted(() => {
         color: #fff;
         font-size: 32rpx;
         font-weight: 600;
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+        background: $recycle-accent;
+        border: 1rpx solid $recycle-accent-dark;
         letter-spacing: 2rpx;
     }
 }

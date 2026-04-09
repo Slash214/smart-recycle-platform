@@ -38,6 +38,31 @@ const Order = seq.define('order', {
 		defaultValue: 1,
 		comment: '收款方式：1微信 2支付宝 3银行卡'
 	},
+	payee_name: {
+		type: STRING,
+		comment: '收款人姓名（银行卡必填）',
+		defaultValue: ''
+	},
+	wechat_account: {
+		type: STRING,
+		comment: '微信收款账号',
+		defaultValue: ''
+	},
+	alipay_account: {
+		type: STRING,
+		comment: '支付宝收款账号',
+		defaultValue: ''
+	},
+	bank_name: {
+		type: STRING,
+		comment: '开户行名称',
+		defaultValue: ''
+	},
+	bank_card_no: {
+		type: STRING,
+		comment: '银行卡号',
+		defaultValue: ''
+	},
 	userid: {
 		type: STRING,
 		allowNull: false,

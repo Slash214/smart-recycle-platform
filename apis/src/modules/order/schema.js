@@ -35,13 +35,18 @@ module.exports = {
         summary: '创建订单',
         body: {
             type: 'object',
-            required: ['nums', 'phone'],
+            required: ['phone'],
             properties: {
-                nums: { type: 'integer', minimum: 1 },
+                nums: { type: 'integer', minimum: 1, description: '与回收明细二选一：有 devices 时可由服务端汇总数量' },
                 price: { type: ['string', 'null'], description: '可选，未报价可为空' },
                 phone: { type: 'string' },
                 remark: { type: 'string' },
                 way: { type: 'integer', enum: [1, 2, 3], description: '收款方式：1微信 2支付宝 3银行卡' },
+                payee_name: { type: 'string', description: '收款人姓名（银行卡必填）' },
+                wechat_account: { type: 'string', description: '微信收款账号（way=1 建议填写）' },
+                alipay_account: { type: 'string', description: '支付宝收款账号（way=2 建议填写）' },
+                bank_name: { type: 'string', description: '开户行名称（way=3 必填）' },
+                bank_card_no: { type: 'string', description: '银行卡号（way=3 必填）' },
                 userid: { type: 'string', description: '管理员代下单可传；小程序端自动取token' },
                 type: { type: 'integer', description: '1上门 2邮寄' },
                 visit_time: { type: 'string' },
@@ -59,6 +64,20 @@ module.exports = {
                         { type: 'null' },
                     ],
                     description: '备注图片，兼容数组/字符串/对象/null',
+                },
+                devices: {
+                    type: 'array',
+                    description: '回收明细：机型/内存/整机|单板/数量',
+                    items: {
+                        type: 'object',
+                        required: ['model', 'memory', 'qty'],
+                        properties: {
+                            model: { type: 'string' },
+                            memory: { type: 'string' },
+                            unit: { type: 'string', enum: ['whole', 'board'] },
+                            qty: { type: 'integer', minimum: 1 },
+                        },
+                    },
                 },
             },
         },
@@ -81,6 +100,11 @@ module.exports = {
                 phone: { type: 'string' },
                 remark: { type: 'string' },
                 way: { type: 'integer', enum: [1, 2, 3], description: '收款方式：1微信 2支付宝 3银行卡' },
+                payee_name: { type: 'string', description: '收款人姓名（银行卡必填）' },
+                wechat_account: { type: 'string', description: '微信收款账号（way=1 建议填写）' },
+                alipay_account: { type: 'string', description: '支付宝收款账号（way=2 建议填写）' },
+                bank_name: { type: 'string', description: '开户行名称（way=3 必填）' },
+                bank_card_no: { type: 'string', description: '银行卡号（way=3 必填）' },
                 type: { type: 'integer' },
                 visit_time: { type: 'string' },
                 tracking_number: { type: 'string' },
@@ -98,6 +122,19 @@ module.exports = {
                     ],
                     description: '备注图片，兼容数组/字符串/对象/null',
                 },
+                devices: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        required: ['model', 'memory', 'qty'],
+                        properties: {
+                            model: { type: 'string' },
+                            memory: { type: 'string' },
+                            unit: { type: 'string', enum: ['whole', 'board'] },
+                            qty: { type: 'integer', minimum: 1 },
+                        },
+                    },
+                },
             },
         },
     },
@@ -109,6 +146,61 @@ module.exports = {
             required: ['id'],
             properties: {
                 id: { type: 'integer' },
+            },
+        },
+    },
+    applyReturnSchema: {
+        tags: ['order'],
+        summary: '用户申请退货',
+        params: {
+            type: 'object',
+            required: ['id'],
+            properties: { id: { type: 'integer' } },
+        },
+        body: {
+            type: 'object',
+            required: ['reason'],
+            properties: {
+                reason: { type: 'string', minLength: 2, maxLength: 500 },
+            },
+        },
+    },
+    latestReturnSchema: {
+        tags: ['order'],
+        summary: '获取订单最新退货申请',
+        params: {
+            type: 'object',
+            required: ['id'],
+            properties: { id: { type: 'integer' } },
+        },
+    },
+    listReturnsSchema: {
+        tags: ['order'],
+        summary: '管理端退货申请列表',
+        querystring: {
+            type: 'object',
+            properties: {
+                page: { type: 'integer', default: 1 },
+                pageSize: { type: 'integer', default: 20 },
+                status: { type: 'integer', enum: [10, 20, 30] },
+                keyword: { type: 'string' },
+            },
+        },
+    },
+    auditReturnSchema: {
+        tags: ['order'],
+        summary: '管理端审核退货申请',
+        params: {
+            type: 'object',
+            required: ['id'],
+            properties: { id: { type: 'integer' } },
+        },
+        body: {
+            type: 'object',
+            required: ['action'],
+            properties: {
+                action: { type: 'string', enum: ['approve', 'reject'] },
+                reject_reason: { type: 'string', maxLength: 500 },
             },
         },
     },

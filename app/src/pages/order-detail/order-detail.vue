@@ -30,18 +30,34 @@
                 <text class="label">收款方式</text>
                 <text class="value">{{ payWayText }}</text>
             </view>
+            <view class="info-row align-start">
+                <text class="label">收款信息</text>
+                <text class="value multiline">{{ payoutInfoText }}</text>
+            </view>
             <view class="info-row last">
                 <text class="label">报单时间</text>
                 <text class="value">{{ createdText }}</text>
             </view>
         </view>
 
-        <!-- 商品明细 -->
+        <!-- 回收明细 -->
         <view class="goods-head">
-            <text class="goods-title">商品明细</text>
+            <text class="goods-title">回收明细</text>
             <text class="goods-count">共{{ nums }}件</text>
         </view>
-        <view class="card goods-card">
+        <view v-if="deviceLines.length" class="card goods-card device-lines">
+            <view v-for="(d, idx) in deviceLines" :key="idx" class="device-row">
+                <view class="device-main">
+                    <text class="device-title">{{ d.model }} / {{ d.memory }} / {{ d.unit === 'board' ? '单板' : '整机' }}</text>
+                    <text class="device-qty">×{{ d.qty }}</text>
+                </view>
+            </view>
+            <view class="price-line">
+                <text class="price-label">结算价格:</text>
+                <text class="price-num">{{ settlementPriceText }}</text>
+            </view>
+        </view>
+        <view v-else class="card goods-card">
             <view class="goods-line">
                 <text class="goods-name">回收商品×{{ nums }}</text>
             </view>
@@ -50,13 +66,31 @@
                 <text class="price-num">{{ settlementPriceText }}</text>
             </view>
         </view>
+
+        <view v-if="returnStatusText" class="card return-tip">
+            <text class="tip-label">退货进度：</text>
+            <text class="tip-text">{{ returnStatusText }}</text>
+        </view>
+
+        <view v-if="canUserConfirm || canApplyReturn" class="fix-bottom">
+            <view v-if="canUserConfirm" class="confirm-btn" @click="confirmSettlement">确认结算</view>
+            <view v-if="canApplyReturn" :class="['confirm-btn', canUserConfirm ? 'secondary' : '']" @click="goApplyReturn">我要退货</view>
+        </view>
     </view>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getOrderDetail, getMiniDefaultAddress } from '@/apis'
+import { getOrderDetail, getMiniDefaultAddress, getOrderReturnLatest, updateOrder } from '@/apis'
+
+interface OrderDevice {
+    id?: number
+    model: string
+    memory: string
+    unit: 'whole' | 'board'
+    qty: number
+}
 
 interface OrderDetail {
     id: number
@@ -68,15 +102,40 @@ interface OrderDetail {
     tracking_number?: string
     areas?: string | null
     way?: number
+    payee_name?: string
+    wechat_account?: string
+    alipay_account?: string
+    bank_name?: string
+    bank_card_no?: string
     inbound_status?: number
     settlement_status?: number
     createdAt?: string
+    devices?: OrderDevice[]
+}
+
+interface ReturnRequest {
+    id: number
+    status: 10 | 20 | 30
+    reason?: string
+    reject_reason?: string
 }
 
 const order = ref<OrderDetail | null>(null)
 const warehouseFallback = ref('')
+const latestReturn = ref<ReturnRequest | null>(null)
 
 const nums = computed(() => Number(order.value?.nums || 0))
+
+const deviceLines = computed(() => {
+    const list = order.value?.devices
+    if (!Array.isArray(list) || !list.length) return []
+    return list.map((d) => ({
+        model: d.model || '',
+        memory: d.memory || '',
+        unit: d.unit === 'board' ? 'board' as const : 'whole' as const,
+        qty: Number(d.qty) || 0,
+    }))
+})
 
 const inboundTitle = computed(() => {
     const ib = order.value?.inbound_status
@@ -109,6 +168,42 @@ const payWayText = computed(() => {
     return w ? map[w] || '-' : '-'
 })
 
+const payoutInfoText = computed(() => {
+    const o = order.value
+    if (!o) return '-'
+    if (o.way === 1) return o.wechat_account || '-'
+    if (o.way === 2) return o.alipay_account || '-'
+    if (o.way === 3) {
+        const seg = [o.payee_name || '', o.bank_name || '', o.bank_card_no || ''].filter(Boolean)
+        return seg.length ? seg.join(' / ') : '-'
+    }
+    return '-'
+})
+
+const canUserConfirm = computed(() => {
+    const o = order.value
+    if (!o) return false
+    if (!o.price || String(o.price).trim() === '') return false
+    return o.settlement_status === 20 || o.settlement_status === 30
+})
+
+const canApplyReturn = computed(() => {
+    const o = order.value
+    if (!o) return false
+    if (o.settlement_status !== 40) return false
+    if (latestReturn.value && latestReturn.value.status === 10) return false
+    return true
+})
+
+const returnStatusText = computed(() => {
+    const r = latestReturn.value
+    if (!r) return ''
+    if (r.status === 10) return '退货申请待审核'
+    if (r.status === 20) return '退货申请已同意'
+    if (r.status === 30) return `退货申请已拒绝${r.reject_reason ? `：${r.reject_reason}` : ''}`
+    return ''
+})
+
 const createdText = computed(() => {
     const raw = order.value?.createdAt
     if (!raw) return '-'
@@ -137,8 +232,9 @@ function normalizeDetail(payload: unknown): OrderDetail | null {
 
 async function load(id: number) {
     try {
-        const raw = await getOrderDetail(id)
+        const [raw, latest] = await Promise.all([getOrderDetail(id), getOrderReturnLatest(id)])
         order.value = normalizeDetail(raw)
+        latestReturn.value = latest || null
         if (!order.value?.areas || !String(order.value.areas).trim()) {
             const addr = await getMiniDefaultAddress()
             if (addr) {
@@ -151,6 +247,11 @@ async function load(id: number) {
     }
 }
 
+function goApplyReturn() {
+    if (!order.value?.id) return
+    uni.navigateTo({ url: `/pages/return-apply/return-apply?id=${order.value.id}` })
+}
+
 function copyLogistics() {
     const t = logisticsLine.value
     if (!t || t === '-') return
@@ -158,6 +259,20 @@ function copyLogistics() {
         data: t,
         success: () => uni.showToast({ title: '已复制', icon: 'none' }),
     })
+}
+
+async function confirmSettlement() {
+    if (!order.value?.id) return
+    try {
+        uni.showLoading({ title: '确认中...', mask: true })
+        await updateOrder(order.value.id, { settlement_status: 40 })
+        await load(order.value.id)
+        uni.showToast({ title: '已确认结算', icon: 'none' })
+    } catch (err: any) {
+        uni.showToast({ title: err?.message || '确认失败', icon: 'none' })
+    } finally {
+        uni.hideLoading()
+    }
 }
 
 onLoad((options) => {
@@ -177,7 +292,7 @@ onLoad((options) => {
     min-height: 100vh;
     background: $recycle-bg;
     padding: 24rpx;
-    padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+    padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
     box-sizing: border-box;
 }
 
@@ -337,5 +452,94 @@ onLoad((options) => {
     font-size: 32rpx;
     font-weight: 600;
     color: $recycle-accent;
+}
+
+.device-lines {
+    .device-row {
+        padding-bottom: 20rpx;
+        margin-bottom: 20rpx;
+        border-bottom: 1rpx solid $recycle-border-light;
+
+        &:last-child {
+            padding-bottom: 0;
+            margin-bottom: 12rpx;
+            border-bottom: none;
+        }
+    }
+
+    .device-main {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16rpx;
+    }
+
+    .device-title {
+        flex: 1;
+        font-size: 28rpx;
+        color: $recycle-text;
+        line-height: 1.45;
+    }
+
+    .device-qty {
+        font-size: 30rpx;
+        font-weight: 600;
+        color: $recycle-accent;
+        flex-shrink: 0;
+    }
+
+    .price-line {
+        margin-top: 4rpx;
+        padding-top: 20rpx;
+
+    }
+}
+
+.fix-bottom {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.98);
+    border-top: 1rpx solid $recycle-border-light;
+    padding: 14rpx 24rpx calc(14rpx + env(safe-area-inset-bottom));
+}
+
+.confirm-btn {
+    height: 84rpx;
+    border-radius: 14rpx;
+    background: $recycle-accent;
+    border: 1rpx solid $recycle-accent-dark;
+    color: #fff;
+    font-size: 30rpx;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirm-btn.secondary {
+    margin-top: 10rpx;
+    background: #fff;
+    color: $recycle-accent;
+}
+
+.return-tip {
+    padding: 20rpx 24rpx;
+    display: flex;
+    align-items: flex-start;
+    gap: 8rpx;
+}
+
+.tip-label {
+    font-size: 24rpx;
+    color: $recycle-text-secondary;
+}
+
+.tip-text {
+    flex: 1;
+    font-size: 24rpx;
+    color: $recycle-text;
+    line-height: 1.5;
 }
 </style>
